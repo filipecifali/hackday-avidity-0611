@@ -525,21 +525,57 @@
             synthesizers.hihat = hihat;
             synthesizers.shaker = shaker;
 
-            // Generate melody sequence based on pattern
-            const melodySequence = params.melodyPattern.map(index => params.scale[index]);
+            // Generate random melody sequence that fits the mood
+            function generateMelody(scale, density, length) {
+                const melody = [];
+                let currentIndex = Math.floor(Math.random() * 3); // Start in lower-mid range
+
+                for (let i = 0; i < length; i++) {
+                    melody.push(scale[currentIndex]);
+
+                    // Random walk with constraints based on mood
+                    const movement = Math.random();
+                    if (density === 'high') {
+                        // More jumps and energy
+                        if (movement < 0.3) currentIndex += 2; // Big jump up
+                        else if (movement < 0.5) currentIndex += 1; // Step up
+                        else if (movement < 0.7) currentIndex -= 1; // Step down
+                        else currentIndex -= 2; // Jump down
+                    } else if (density === 'medium') {
+                        // Moderate movement
+                        if (movement < 0.35) currentIndex += 1; // Step up
+                        else if (movement < 0.65) currentIndex += 0; // Stay same (repeat)
+                        else currentIndex -= 1; // Step down
+                    } else {
+                        // Slower, more peaceful movement
+                        if (movement < 0.4) currentIndex += 1; // Step up
+                        else if (movement < 0.8) currentIndex += 0; // Stay same (longer notes)
+                        else currentIndex -= 1; // Step down
+                    }
+
+                    // Keep within scale bounds
+                    currentIndex = Math.max(0, Math.min(scale.length - 1, currentIndex));
+                }
+                return melody;
+            }
 
             // Determine note durations based on rhythm density
-            let noteDuration, sequenceInterval;
+            let noteDuration, sequenceInterval, melodyLength;
             if (params.rhythmDensity === 'high') {
                 noteDuration = '8n';
                 sequenceInterval = '8n';
+                melodyLength = 32; // Longer, more active melody
             } else if (params.rhythmDensity === 'medium') {
                 noteDuration = '4n';
                 sequenceInterval = '4n';
+                melodyLength = 16; // Moderate length
             } else {
                 noteDuration = '2n';
                 sequenceInterval = '2n';
+                melodyLength = 8; // Short, spacious melody
             }
+
+            const melodySequence = generateMelody(params.scale, params.rhythmDensity, melodyLength);
 
             // Choose instrument based on mood - different moods get different lead instruments
             const leadInstrument = params.rhythmDensity === 'high' ? synthesizers.trumpet :

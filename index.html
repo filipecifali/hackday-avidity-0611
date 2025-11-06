@@ -95,6 +95,21 @@
             margin-top: 20px;
             display: none;
         }
+        #sectionDisplay {
+            margin-top: 15px;
+            padding: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: bold;
+            display: none;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
         #playbackControls button {
             margin-right: 10px;
             background-color: #28a745;
@@ -164,6 +179,8 @@
 
         <button id="generateBtn" disabled>Generate Music</button>
 
+        <div id="sectionDisplay">🎵 Now Playing: <span id="currentSection">Intro</span></div>
+
         <div id="playbackControls">
             <button id="stopBtn" class="stop">Stop Music</button>
         </div>
@@ -172,7 +189,7 @@
 
         <div id="popeRat">
             <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Crect fill='%23ddd' width='400' height='400'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-size='60'%3E🐀👑%3C/text%3E%3C/svg%3E" alt="Pope Rat" onerror="this.style.display='none'">
-            <p>🎵 Synthetic music, blessed by His Holiness 🎵</p>
+            <p>🎵 Synthetic music 🎵</p>
         </div>
     </div>
 
@@ -407,6 +424,13 @@
             const styleParams = styleMappings[style];
             const moodParams = moodMappings[mood];
 
+            // Generate dynamic chord progression based on style
+            const chords = generateChordProgression(style, mood);
+            const bassNotes = generateBassLine(chords, styleParams.bassType);
+
+            // Generate harmonically correct scale from chords
+            const scale = generateScaleFromChords(chords);
+
             // Merge parameters, applying style modifications to mood base
             return {
                 ...moodParams,
@@ -417,8 +441,207 @@
                 bassType: styleParams.bassType,
                 distortion: styleParams.distortion,
                 style: style,
-                mood: mood
+                mood: mood,
+                chords: chords,
+                bassNotes: bassNotes,
+                scale: scale, // Use generated scale instead of hardcoded
+                structure: generateSongStructure(mood) // Add song structure
             };
+        }
+
+        // Generate chord progressions based on style and mood
+        function generateChordProgression(style, mood) {
+            // Common chord progressions by mood
+            const progressions = {
+                happy: { numerals: ['I', 'V', 'vi', 'IV'], key: 'C', mode: 'major' },      // C-G-Am-F
+                sad: { numerals: ['i', 'bVI', 'bVII', 'V'], key: 'C', mode: 'minor' },      // Cm-Ab-Bb-G
+                calm: { numerals: ['I', 'IV', 'V', 'I'], key: 'C', mode: 'major' },         // C-F-G-C
+                energetic: { numerals: ['I', 'IV', 'V', 'V'], key: 'C', mode: 'major' },    // C-F-G-G
+                peaceful: { numerals: ['I', 'V', 'vi', 'V'], key: 'C', mode: 'major' },     // C-G-Am-G
+                excited: { numerals: ['I', 'bVII', 'IV', 'I'], key: 'C', mode: 'major' }    // C-Bb-F-C (modal)
+            };
+
+            const progression = progressions[mood] || progressions.happy;
+
+            return progression.numerals.map(numeral => voiceChord(numeral, progression.key, style, progression.mode));
+        }
+
+        // Voice a chord based on Roman numeral, key, and style
+        function voiceChord(numeral, key, style, mode = 'major') {
+            // Map Roman numerals to chord types in C major/minor
+            const chordMapMajor = {
+                'I': { root: 'C', quality: 'major' },
+                'ii': { root: 'D', quality: 'minor' },
+                'iii': { root: 'E', quality: 'minor' },
+                'IV': { root: 'F', quality: 'major' },
+                'V': { root: 'G', quality: 'major' },
+                'vi': { root: 'A', quality: 'minor' },
+                'vii°': { root: 'B', quality: 'diminished' },
+                'bVII': { root: 'Bb', quality: 'major' }
+            };
+
+            const chordMapMinor = {
+                'i': { root: 'C', quality: 'minor' },
+                'ii°': { root: 'D', quality: 'diminished' },
+                'bIII': { root: 'Eb', quality: 'major' },
+                'iv': { root: 'F', quality: 'minor' },
+                'v': { root: 'G', quality: 'minor' },
+                'V': { root: 'G', quality: 'major' }, // Harmonic minor
+                'bVI': { root: 'Ab', quality: 'major' },
+                'bVII': { root: 'Bb', quality: 'major' }
+            };
+
+            const chordMap = mode === 'minor' ? chordMapMinor : chordMapMajor;
+            const chordInfo = chordMap[numeral];
+            if (!chordInfo) return ['C3', 'E3', 'G3']; // Default
+
+            const voicing = styleMappings[style].chordVoicing;
+
+            if (voicing === 'power') {
+                // Power chords: root + fifth only (rock)
+                return [
+                    chordInfo.root + '3',
+                    getPerfectFifth(chordInfo.root) + '3'
+                ];
+            } else if (voicing === 'extended') {
+                // Jazz chords: add 7th and 9th
+                const seventh = chordInfo.quality === 'major' ? 'maj7' : '7';
+                return [
+                    chordInfo.root + '3',
+                    getThird(chordInfo.root, chordInfo.quality) + '3',
+                    getPerfectFifth(chordInfo.root) + '3',
+                    getSeventh(chordInfo.root, chordInfo.quality) + '4'
+                ];
+            } else if (voicing === 'wide') {
+                // Electronic: wider spacing
+                return [
+                    chordInfo.root + '2',
+                    getThird(chordInfo.root, chordInfo.quality) + '3',
+                    getPerfectFifth(chordInfo.root) + '4'
+                ];
+            } else {
+                // Classical: simple triad
+                return [
+                    chordInfo.root + '3',
+                    getThird(chordInfo.root, chordInfo.quality) + '3',
+                    getPerfectFifth(chordInfo.root) + '3'
+                ];
+            }
+        }
+
+        // Helper functions for chord construction
+        function getThird(root, quality) {
+            const notes = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+            const rootIndex = notes.indexOf(root);
+            const interval = quality === 'major' ? 4 : 3; // major = 4 semitones, minor = 3
+            return notes[(rootIndex + interval) % 12];
+        }
+
+        function getPerfectFifth(root) {
+            const notes = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+            const rootIndex = notes.indexOf(root);
+            return notes[(rootIndex + 7) % 12]; // Perfect fifth = 7 semitones
+        }
+
+        function getSeventh(root, quality) {
+            const notes = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+            const rootIndex = notes.indexOf(root);
+            const interval = quality === 'major' ? 11 : 10; // maj7 = 11, dom7/min7 = 10
+            return notes[(rootIndex + interval) % 12];
+        }
+
+        // Generate bass line from chord progression
+        function generateBassLine(chords, bassType) {
+            const bassNotes = [];
+
+            chords.forEach((chord, index) => {
+                const root = chord[0].replace(/[0-9]/g, ''); // Extract note without octave
+
+                if (bassType === 'driving') {
+                    // Rock: root on every beat
+                    bassNotes.push(root + '2', root + '2', root + '2', root + '2');
+                } else if (bassType === 'walking') {
+                    // Jazz: walking bass with chromatic approach
+                    const nextChord = chords[index + 1] || chords[0]; // Next chord or loop back
+                    const nextRoot = nextChord[0].replace(/[0-9]/g, '');
+
+                    bassNotes.push(root + '2');
+                    bassNotes.push(getPerfectFifth(root) + '2');
+                    bassNotes.push(getThird(root, 'major') + '2');
+                    bassNotes.push(getApproachNote(root, nextRoot) + '2');
+                } else if (bassType === 'synth') {
+                    // Electronic: syncopated
+                    bassNotes.push(root + '2', root + '2', root + '1', root + '2');
+                } else {
+                    // Classical: melodic, simple
+                    bassNotes.push(root + '2', getPerfectFifth(root) + '2');
+                }
+            });
+
+            return bassNotes;
+        }
+
+        function getApproachNote(current, next) {
+            const notes = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+            const currentIndex = notes.indexOf(current);
+            const nextIndex = notes.indexOf(next);
+
+            // Chromatic approach from below or above
+            if (nextIndex > currentIndex) {
+                return notes[(nextIndex - 1 + 12) % 12];
+            } else {
+                return notes[(nextIndex + 1) % 12];
+            }
+        }
+
+        // Generate song structure with sections
+        function generateSongStructure(mood) {
+            // Different structures based on mood energy
+            const structures = {
+                high: ['intro', 'verse', 'chorus', 'verse', 'chorus', 'bridge', 'chorus', 'outro'],
+                medium: ['intro', 'verse', 'chorus', 'verse', 'chorus', 'outro'],
+                low: ['intro', 'verse', 'verse', 'outro']
+            };
+
+            const energy = (mood === 'energetic' || mood === 'excited') ? 'high' :
+                          (mood === 'happy') ? 'medium' : 'low';
+
+            return structures[energy];
+        }
+
+        // Generate a melodic scale from chord progression
+        function generateScaleFromChords(chords) {
+            const scaleNotes = new Set();
+
+            // Extract all unique notes from the chord progression
+            chords.forEach(chord => {
+                chord.forEach(note => {
+                    const noteName = note.replace(/[0-9]/g, ''); // Remove octave
+                    scaleNotes.add(noteName);
+                });
+            });
+
+            // Convert to array and create scale with octaves for melody
+            const noteArray = Array.from(scaleNotes);
+            const scale = [];
+
+            // Create 2 octaves of the scale for melody range
+            [4, 5].forEach(octave => {
+                noteArray.forEach(note => {
+                    scale.push(note + octave);
+                });
+            });
+
+            return scale.sort((a, b) => {
+                const noteOrder = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+                const aNote = a.replace(/[0-9]/g, '');
+                const aOctave = parseInt(a.match(/[0-9]/)[0]);
+                const bNote = b.replace(/[0-9]/g, '');
+                const bOctave = parseInt(b.match(/[0-9]/)[0]);
+
+                if (aOctave !== bOctave) return aOctave - bOctave;
+                return noteOrder.indexOf(aNote) - noteOrder.indexOf(bNote);
+            });
         }
 
         function getMoodParameters(mood) {
@@ -480,8 +703,9 @@
 
             isPlaying = true;
             document.getElementById('playbackControls').style.display = 'block';
+            document.getElementById('sectionDisplay').style.display = 'block';
             document.getElementById('popeRat').style.display = 'block';
-            showStatus(`Playing ${selectedStyle.toUpperCase()} ${selectedMood} music - ${params.tempo} BPM`, 'success');
+            showStatus(`Playing ${selectedStyle.toUpperCase()} ${selectedMood} music - ${params.tempo} BPM - ${params.structure.length} sections`, 'success');
         }
 
         async function playSynthesizedMusic(params) {
@@ -916,10 +1140,24 @@
             synthParts.hihatPattern = hihatPattern;
             synthParts.shakerPattern = shakerPattern;
 
-            // Start all parts
+            // Simplified song structure - just start everything and let it loop
+            // This ensures harmony works correctly first
+            console.log('Song structure:', params.structure);
+            console.log('Using chords:', params.chords);
+            console.log('Using scale:', params.scale);
+
+            // Start all parts together for consistent playback
             synthParts.melody.start(0);
             synthParts.chords.start(0);
             synthParts.bass.start(0);
+            kickPattern.start(0);
+            snarePattern.start('4n'); // Snare on beat 2 and 4
+            hihatPattern.start(0);
+            shakerPattern.start(0);
+
+            // Update section display to show it's playing
+            document.getElementById('currentSection').textContent = 'Playing';
+            document.getElementById('sectionDisplay').style.display = 'block';
         }
 
         function stopMusic() {
@@ -955,6 +1193,7 @@
 
             isPlaying = false;
             document.getElementById('playbackControls').style.display = 'none';
+            document.getElementById('sectionDisplay').style.display = 'none';
             document.getElementById('popeRat').style.display = 'none';
             showStatus('Music stopped', 'info');
         }

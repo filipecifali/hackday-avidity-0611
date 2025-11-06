@@ -104,7 +104,7 @@
         // Mood to musical parameter mapping
         const moodMappings = {
             happy: {
-                tempo: 120,
+                tempo: 130,
                 // Fallback synthesis parameters
                 scale: ['C4', 'D4', 'E4', 'G4', 'A4', 'C5', 'D5', 'E5'],
                 chords: [
@@ -122,10 +122,10 @@
                     ['C3', 'E3', 'G3']
                 ],
                 bassNotes: ['C2', 'G2', 'A2', 'F2', 'C2', 'E2', 'G2', 'A2', 'F2', 'C2', 'G2', 'A2', 'F2', 'C2', 'G2', 'F2'],
-                melodyPattern: [0, 2, 4, 5, 7, 5, 4, 2, 0, 2, 4, 2, 0, 7, 5, 4, 2, 0, 2, 4, 5, 7, 8, 7, 5, 4, 2, 0, 5, 4, 2, 0],
                 rhythmDensity: 'medium',
                 reverbAmount: 0.3,
-                filterFreq: 3500
+                filterFreq: 3500,
+                structure: 'bass_intro_then_guitar'
             },
             energetic: {
                 tempo: 140,
@@ -145,7 +145,6 @@
                     ['G3', 'B3', 'D4', 'F4']
                 ],
                 bassNotes: ['C2', 'D2', 'G2', 'C2', 'E2', 'D2', 'G2', 'A2', 'C2', 'D2', 'G2', 'C2', 'E2', 'D2', 'G2', 'A2'],
-                melodyPattern: [0, 4, 7, 4, 6, 5, 4, 2, 7, 6, 5, 4, 2, 4, 2, 0, 0, 4, 7, 6, 5, 4, 2, 0, 7, 5, 4, 2, 5, 4, 2, 0],
                 rhythmDensity: 'high',
                 reverbAmount: 0.2,
                 filterFreq: 4500
@@ -168,7 +167,6 @@
                     ['F3', 'A3', 'C4', 'E4']
                 ],
                 bassNotes: ['C2', 'F2', 'G2', 'C2', 'D2', 'F2', 'G2', 'C2', 'C2', 'F2', 'G2', 'C2', 'D2', 'F2', 'G2', 'C2'],
-                melodyPattern: [0, 2, 1, 3, 2, 4, 3, 1, 5, 4, 3, 2, 1, 2, 1, 0, 0, 1, 2, 3, 4, 3, 2, 1, 3, 2, 1, 0, 2, 1, 0, -1],
                 rhythmDensity: 'low',
                 reverbAmount: 0.5,
                 filterFreq: 700
@@ -191,7 +189,6 @@
                     ['Eb3', 'G3', 'Bb3']
                 ],
                 bassNotes: ['C2', 'Ab2', 'Bb2', 'G2', 'Eb2', 'Ab2', 'Bb2', 'G2', 'C2', 'Ab2', 'Bb2', 'G2', 'Eb2', 'Ab2', 'Bb2', 'G2'],
-                melodyPattern: [0, 2, 1, 3, 2, 0, 5, 3, 4, 3, 2, 1, 0, 1, 0, -1, 0, 1, 2, 1, 0, -1, -2, -1, 0, 2, 1, 0, 3, 2, 1, 0],
                 rhythmDensity: 'low',
                 reverbAmount: 0.6,
                 filterFreq: 500
@@ -214,7 +211,6 @@
                     ['Am3', 'C4', 'E4', 'G4']
                 ],
                 bassNotes: ['C2', 'F2', 'G2', 'C2', 'D2', 'F2', 'G2', 'C2', 'C2', 'F2', 'G2', 'C2', 'D2', 'F2', 'G2', 'C2'],
-                melodyPattern: [0, 1, 2, 1, 3, 2, 1, 0, 4, 3, 2, 1, 0, 1, 2, 1, 0, 2, 3, 2, 1, 0, -1, 0, 1, 2, 3, 4, 3, 2, 1, 0],
                 rhythmDensity: 'low',
                 reverbAmount: 0.7,
                 filterFreq: 400
@@ -237,7 +233,6 @@
                     ['G3', 'B3', 'D4']
                 ],
                 bassNotes: ['C2', 'D2', 'G2', 'C2', 'E2', 'D2', 'G2', 'A2', 'C2', 'D2', 'G2', 'C2', 'E2', 'D2', 'G2', 'A2'],
-                melodyPattern: [0, 3, 5, 7, 8, 6, 4, 2, 8, 7, 5, 3, 2, 3, 5, 7, 0, 3, 5, 7, 8, 7, 5, 3, 8, 6, 4, 2, 5, 7, 8, 7],
                 rhythmDensity: 'high',
                 reverbAmount: 0.3,
                 filterFreq: 4000
@@ -260,12 +255,45 @@
                     ['C3', 'G3']
                 ],
                 bassNotes: ['C2', 'G2', 'F2', 'C2', 'C2', 'G2', 'F2', 'C2', 'C2', 'G2', 'F2', 'C2', 'C2', 'G2', 'F2', 'C2'],
-                melodyPattern: [0, 1, 2, 3, 4, 3, 2, 1, 0, 1, 2, 1, 0, 4, 3, 2, 1, 0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0, 3, 2, 1, 0],
                 rhythmDensity: 'high',
                 reverbAmount: 0.2,
                 filterFreq: 5000
-            }
+            },
         };
+
+        function generateRandomMelody(scale, length, mood) {
+            const melody = [];
+            let lastNoteIndex = Math.floor(Math.random() * scale.length);
+            melody.push(lastNoteIndex);
+
+            for (let i = 1; i < length; i++) {
+                let nextNoteIndex;
+                const random = Math.random();
+
+                if (mood === 'happy' || mood === 'energetic' || mood === 'excited' || mood === 'rock' || mood === 'samba') {
+                    // Higher probability of going up
+                    if (random < 0.6) {
+                        nextNoteIndex = lastNoteIndex + Math.floor(Math.random() * 3) + 1;
+                    } else {
+                        nextNoteIndex = lastNoteIndex - Math.floor(Math.random() * 3);
+                    }
+                } else {
+                    // Higher probability of going down
+                    if (random < 0.6) {
+                        nextNoteIndex = lastNoteIndex - Math.floor(Math.random() * 3) - 1;
+                    } else {
+                        nextNoteIndex = lastNoteIndex + Math.floor(Math.random() * 3);
+                    }
+                }
+
+                // Clamp the index to be within the scale's bounds
+                nextNoteIndex = Math.max(0, Math.min(scale.length - 1, nextNoteIndex));
+                melody.push(nextNoteIndex);
+                lastNoteIndex = nextNoteIndex;
+            }
+
+            return melody;
+        }
 
         function getMoodParameters(mood) {
             const normalizedMood = mood.toLowerCase().trim();
@@ -338,13 +366,13 @@
                 octaves: 10,
                 oscillator: { type: 'sine' },
                 envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4 },
-                volume: -6
+                volume: 0
             }).toDestination();
 
             const snare = new Tone.NoiseSynth({
                 noise: { type: 'white' },
                 envelope: { attack: 0.001, decay: 0.2, sustain: 0, release: 0.2 },
-                volume: -10
+                volume: 0
             }).toDestination();
 
             const hihat = new Tone.MetalSynth({
@@ -354,14 +382,14 @@
                 modulationIndex: 32,
                 resonance: 4000,
                 octaves: 1.5,
-                volume: -15
+                volume: 0
             }).toDestination();
 
             // Add shaker for texture
             const shaker = new Tone.NoiseSynth({
                 noise: { type: 'pink' },
                 envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.05 },
-                volume: -20
+                volume: 0
             }).toDestination();
 
             // Create enhanced effects chain
@@ -467,7 +495,7 @@
                     sustain: 0.5,
                     release: 0.8
                 },
-                volume: -8
+                volume: 0
             }).chain(delay, compressor, filter);
 
             // Create pad synthesizer with detuned oscillators for richness - QUIETER
@@ -483,7 +511,7 @@
                     sustain: 0.8,
                     release: 3
                 },
-                volume: -18  // Quieter to let other instruments shine
+                volume: 0  // Quieter to let other instruments shine
             }).chain(chorus, filter);
 
             // Create bass synthesizer with sub oscillator - MODERATE
@@ -525,8 +553,420 @@
             synthesizers.hihat = hihat;
             synthesizers.shaker = shaker;
 
-            // Generate melody sequence based on pattern
-            const melodySequence = params.melodyPattern.map(index => params.scale[index]);
+                bassNotes: ['C2', 'G2', 'A2', 'F2'],
+                rhythmDensity: 'medium',
+                reverbAmount: 0.3,
+                filterFreq: 3500,
+                structure: 'bass_intro_then_guitar'
+            },
+            energetic: {
+                tempo: 140,
+                scale: ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5'],
+                chords: [
+                    ['C3', 'E3', 'G3', 'B3'],
+                    ['D3', 'F3', 'A3', 'C4'],
+                    ['G3', 'B3', 'D4', 'F4'],
+                    ['C3', 'E3', 'G3', 'B3'],
+                    ['C3', 'E3', 'G3', 'B3'],
+                    ['D3', 'F3', 'A3', 'C4'],
+                    ['G3', 'B3', 'D4', 'F4'],
+                    ['C3', 'E3', 'G3', 'B3'],
+                    ['D3', 'F3', 'A3', 'C4'],
+                    ['G3', 'B3', 'D4', 'F4'],
+                    ['C3', 'E3', 'G3', 'B3'],
+                    ['G3', 'B3', 'D4', 'F4']
+                ],
+                bassNotes: ['C2', 'D2', 'G2', 'C2'],
+                rhythmDensity: 'high',
+                reverbAmount: 0.2,
+                filterFreq: 4500
+            },
+            calm: {
+                tempo: 70,
+                scale: ['C4', 'D4', 'E4', 'G4', 'A4', 'C5'],
+                chords: [
+                    ['C3', 'E3', 'G3', 'D4'],
+                    ['F3', 'A3', 'C4', 'E4'],
+                    ['G3', 'B3', 'D4', 'F4'],
+                    ['C3', 'E3', 'G3', 'D4'],
+                    ['C3', 'E3', 'G3', 'D4'],
+                    ['F3', 'A3', 'C4', 'E4'],
+                    ['G3', 'B3', 'D4', 'F4'],
+                    ['C3', 'E3', 'G3', 'D4'],
+                    ['F3', 'A3', 'C4', 'E4'],
+                    ['C3', 'E3', 'G3', 'D4'],
+                    ['G3', 'B3', 'D4', 'F4'],
+                    ['F3', 'A3', 'C4', 'E4']
+                ],
+                bassNotes: ['C2', 'F2', 'G2', 'C2'],
+                rhythmDensity: 'low',
+                reverbAmount: 0.5,
+                filterFreq: 700
+            },
+            sad: {
+                tempo: 65,
+                scale: ['C4', 'D4', 'Eb4', 'F4', 'G4', 'Ab4', 'Bb4', 'C5'],
+                chords: [
+                    ['C3', 'Eb3', 'G3'],
+                    ['Ab3', 'C4', 'Eb4'],
+                    ['Bb3', 'D4', 'F4'],
+                    ['G3', 'B3', 'D4'],
+                    ['C3', 'Eb3', 'G3'],
+                    ['Ab3', 'C4', 'Eb4'],
+                    ['Bb3', 'D4', 'F4'],
+                    ['G3', 'B3', 'D4'],
+                    ['Ab3', 'C4', 'Eb4'],
+                    ['G3', 'B3', 'D4'],
+                    ['F3', 'Ab3', 'C4'],
+                    ['Eb3', 'G3', 'Bb3']
+                ],
+                bassNotes: ['C2', 'Ab2', 'Bb2', 'G2'],
+                rhythmDensity: 'low',
+                reverbAmount: 0.6,
+                filterFreq: 500
+            },
+            peaceful: {
+                tempo: 60,
+                scale: ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'C5'],
+                chords: [
+                    ['C3', 'E3', 'G3', 'B3'],
+                    ['F3', 'A3', 'C4', 'E4'],
+                    ['G3', 'B3', 'D4', 'F4'],
+                    ['C3', 'E3', 'G3', 'B3'],
+                    ['C3', 'E3', 'G3', 'B3'],
+                    ['F3', 'A3', 'C4', 'E4'],
+                    ['G3', 'B3', 'D4', 'F4'],
+                    ['C3', 'E3', 'G3', 'B3'],
+                    ['F3', 'A3', 'C4', 'E4'],
+                    ['G3', 'B3', 'D4', 'F4'],
+                    ['C3', 'E3', 'G3', 'B3'],
+                    ['Am3', 'C4', 'E4', 'G4']
+                ],
+                bassNotes: ['C2', 'F2', 'G2', 'C2'],
+                rhythmDensity: 'low',
+                reverbAmount: 0.7,
+                filterFreq: 400
+            },
+            excited: {
+                tempo: 150,
+                scale: ['C4', 'D4', 'E4', 'F#4', 'G4', 'A4', 'B4', 'C5', 'D5'],
+                chords: [
+                    ['C3', 'E3', 'G3'],
+                    ['D3', 'F#3', 'A3'],
+                    ['G3', 'B3', 'D4'],
+                    ['C3', 'E3', 'G3'],
+                    ['C3', 'E3', 'G3'],
+                    ['D3', 'F#3', 'A3'],
+                    ['G3', 'B3', 'D4'],
+                    ['C3', 'E3', 'G3'],
+                    ['D3', 'F#3', 'A3'],
+                    ['G3', 'B3', 'D4'],
+                    ['A3', 'C#4', 'E4'],
+                    ['G3', 'B3', 'D4']
+                ],
+                bassNotes: ['C2', 'D2', 'G2', 'C2'],
+                rhythmDensity: 'high',
+                reverbAmount: 0.3,
+                filterFreq: 4000
+            },
+            rock: {
+                tempo: 160,
+                scale: ['C4', 'Eb4', 'F4', 'G4', 'Bb4', 'C5'],
+                chords: [
+                    ['C3', 'G3'],
+                    ['G3', 'D4'],
+                    ['F3', 'C4'],
+                    ['C3', 'G3'],
+                    ['C3', 'G3'],
+                    ['G3', 'D4'],
+                    ['F3', 'C4'],
+                    ['C3', 'G3'],
+                    ['C3', 'G3'],
+                    ['G3', 'D4'],
+                    ['F3', 'C4'],
+                    ['C3', 'G3']
+                ],
+                bassNotes: ['C2', 'G2', 'F2', 'C2'],
+                rhythmDensity: 'high',
+                reverbAmount: 0.2,
+                filterFreq: 5000
+            },
+            samba: {
+                tempo: 180,
+                scale: ['C4', 'D4', 'E4', 'G4', 'A4', 'C5'],
+                chords: [
+                    ['C3', 'E3', 'G3', 'Bb3'],
+                    ['F3', 'A3', 'C4', 'E4'],
+                    ['G3', 'B3', 'D4', 'F4'],
+                    ['C3', 'E3', 'G3', 'Bb3']
+                ],
+                bassNotes: ['C2', 'G2', 'F2', 'C2'],
+                rhythmDensity: 'high',
+                reverbAmount: 0.3,
+                filterFreq: 4000
+            }
+        };
+
+        function getMoodParameters(mood) {
+            const normalizedMood = mood.toLowerCase().trim();
+
+            // Direct match
+            if (moodMappings[normalizedMood]) {
+                return moodMappings[normalizedMood];
+            }
+
+            // Fuzzy matching for similar moods
+            for (const [key, value] of Object.entries(moodMappings)) {
+                if (normalizedMood.includes(key) || key.includes(normalizedMood)) {
+                    return value;
+                }
+            }
+
+            // Default to calm if no match
+            return moodMappings.calm;
+        }
+
+        async function generateMusic() {
+            const mood = document.getElementById('moodInput').value;
+
+            if (!mood) {
+                showStatus('Please enter a mood first!', 'error');
+                return;
+            }
+
+            // Stop any existing music
+            if (isPlaying) {
+                stopMusic();
+            }
+
+            // Start Tone.js audio context
+            await Tone.start();
+            console.log('Audio context started');
+
+            // Get mood parameters
+            const params = getMoodParameters(mood);
+            console.log('Mood parameters:', params);
+
+            // Set tempo
+            Tone.Transport.bpm.value = params.tempo;
+
+            // Create effects chain
+            reverb = new Tone.Reverb({
+                decay: 3,
+                wet: params.reverbAmount
+            }).toDestination();
+
+            filter = new Tone.Filter({
+                frequency: params.filterFreq,
+                type: 'lowpass',
+                rolloff: -12
+            }).connect(reverb);
+
+            await playSynthesizedMusic(params);
+
+            Tone.Transport.start();
+
+            isPlaying = true;
+            document.getElementById('playbackControls').style.display = 'block';
+            showStatus(`Playing music for mood: "${mood}" (Synthesized) - ${params.tempo} BPM`, 'success');
+        }
+
+        async function playSynthesizedMusic(params) {
+            // Create drum synthesizers
+            const kick = new Tone.MembraneSynth({
+                pitchDecay: 0.05,
+                octaves: 10,
+                oscillator: { type: 'sine' },
+                envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4 },
+                volume: 0
+            }).toDestination();
+
+            const snare = new Tone.NoiseSynth({
+                noise: { type: 'white' },
+                envelope: { attack: 0.001, decay: 0.2, sustain: 0, release: 0.2 },
+                volume: 0
+            }).toDestination();
+
+            const hihat = new Tone.MetalSynth({
+                frequency: 200,
+                envelope: { attack: 0.001, decay: 0.1, release: 0.05 },
+                harmonicity: 5.1,
+                modulationIndex: 32,
+                resonance: 4000,
+                octaves: 1.5,
+                volume: 0
+            }).toDestination();
+
+            // Add shaker for texture
+            const shaker = new Tone.NoiseSynth({
+                noise: { type: 'pink' },
+                envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.05 },
+                volume: 0
+            }).toDestination();
+
+            // Create enhanced effects chain
+            const chorus = new Tone.Chorus(4, 2.5, 0.5).start();
+            const delay = new Tone.FeedbackDelay('8n', 0.3);
+            const compressor = new Tone.Compressor(-20, 3);
+            const tremolo = new Tone.Tremolo(6, 0.3).start();
+
+            // Piano Sampler - High-quality piano sound
+            synthesizers.piano = new Tone.Sampler({
+                urls: {
+                    'A0': 'A0.mp3',
+                    'C1': 'C1.mp3',
+                    'D#1': 'Ds1.mp3',
+                    'F#1': 'Fs1.mp3',
+                    'A1': 'A1.mp3',
+                    'C2': 'C2.mp3',
+                    'D#2': 'Ds2.mp3',
+                    'F#2': 'Fs2.mp3',
+                    'A2': 'A2.mp3',
+                    'C3': 'C3.mp3',
+                    'D#3': 'Ds3.mp3',
+                    'F#3': 'Fs3.mp3',
+                    'A3': 'A3.mp3',
+                    'C4': 'C4.mp3',
+                    'D#4': 'Ds4.mp3',
+                    'F#4': 'Fs4.mp3',
+                    'A4': 'A4.mp3',
+                    'C5': 'C5.mp3',
+                    'D#5': 'Ds5.mp3',
+                    'F#5': 'Fs5.mp3',
+                    'A5': 'A5.mp3',
+                    'C6': 'C6.mp3',
+                    'D#6': 'Ds6.mp3',
+                    'F#6': 'Fs6.mp3',
+                    'A6': 'A6.mp3',
+                    'C7': 'C7.mp3',
+                    'D#7': 'Ds7.mp3',
+                    'F#7': 'Fs7.mp3',
+                    'A7': 'A7.mp3',
+                    'C8': 'C8.mp3'
+                },
+                release: 1,
+                baseUrl: 'https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/master/samples/sgp_grand_piano/'
+            }).chain(tremolo, chorus, filter);
+
+            // Guitar Sampler - High-quality electric guitar sound
+            synthesizers.guitar = new Tone.Sampler({
+                urls: {
+                    'A2': 'A2.mp3',
+                    'A4': 'A4.mp3',
+                    'B2': 'B2.mp3',
+                    'B4': 'B4.mp3',
+                    'C3': 'C3.mp3',
+                    'C5': 'C5.mp3',
+                    'D3': 'D3.mp3',
+                    'D5': 'D5.mp3',
+                    'E2': 'E2.mp3',
+                    'E4': 'E4.mp3',
+                    'F2': 'F2.mp3',
+                    'F4': 'F4.mp3',
+                    'G2': 'G2.mp3',
+                    'G4': 'G4.mp3'
+                },
+                release: 1,
+                baseUrl: 'https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/master/samples/guitar-electric/'
+            }).chain(delay, compressor, filter);
+
+            // Trumpet (higher, brighter brass) - LOUDER
+            synthesizers.trumpet = new Tone.PolySynth(Tone.AMSynth, {
+                harmonicity: 2,
+                oscillator: { type: 'sine' },
+                envelope: {
+                    attack: 0.05,
+                    decay: 0.2,
+                    sustain: 0.7,
+                    release: 0.8
+                },
+                modulation: { type: 'square' },
+                modulationEnvelope: {
+                    attack: 0.15,
+                    decay: 0.1,
+                    sustain: 0.7,
+                    release: 0.6
+                },
+                volume: 0  // Much louder!
+            }).chain(delay, compressor, filter);
+
+            // Keep original melody synth as backup
+            synthesizers.melody = new Tone.PolySynth(Tone.AMSynth, {
+                harmonicity: 1.2,
+                oscillator: { type: 'sine' },
+                envelope: {
+                    attack: 0.01,
+                    decay: 0.2,
+                    sustain: 0.3,
+                    release: 1
+                },
+                modulation: { type: 'square' },
+                modulationEnvelope: {
+                    attack: 0.2,
+                    decay: 0.01,
+                    sustain: 0.5,
+                    release: 0.8
+                },
+                volume: 0
+            }).chain(delay, compressor, filter);
+
+            // Create pad synthesizer with detuned oscillators for richness - QUIETER
+            synthesizers.pads = new Tone.PolySynth(Tone.Synth, {
+                oscillator: {
+                    type: 'sine',
+                    count: 3,
+                    spread: 30 // Detuning for thickness
+                },
+                envelope: {
+                    attack: 1.5,
+                    decay: 0.8,
+                    sustain: 0.8,
+                    release: 3
+                },
+                volume: 0  // Quieter to let other instruments shine
+            }).chain(chorus, filter);
+
+            // Create bass synthesizer with sub oscillator - MODERATE
+            synthesizers.bass = new Tone.MonoSynth({
+                oscillator: {
+                    type: 'sawtooth'
+                },
+                filter: {
+                    Q: 2,
+                    type: 'lowpass',
+                    rolloff: -24
+                },
+                envelope: {
+                    attack: 0.01,
+                    decay: 0.3,
+                    sustain: 0.4,
+                    release: 1.2
+                },
+                filterEnvelope: {
+                    attack: 0.01,
+                    decay: 0.15,
+                    sustain: 0.3,
+                    release: 0.8,
+                    baseFrequency: 50,
+                    octaves: 3
+                },
+                volume: 0  // Moderate bass level
+            }).toDestination();
+
+            // Store effects for cleanup
+            synthesizers.chorus = chorus;
+            synthesizers.delay = delay;
+            synthesizers.compressor = compressor;
+            synthesizers.tremolo = tremolo;
+
+            // Store drum synths for cleanup
+            synthesizers.kick = kick;
+            synthesizers.snare = snare;
+            synthesizers.hihat = hihat;
+            synthesizers.shaker = shaker;
+
+            // Generate melody sequence based on random generation
+            const melodySequence = generateRandomMelody(params.scale, 32, params.mood);
 
             // Determine note durations based on rhythm density
             let noteDuration, sequenceInterval;
@@ -541,150 +981,223 @@
                 sequenceInterval = '2n';
             }
 
-            // Choose instrument based on mood - different moods get different lead instruments
-            const leadInstrument = params.rhythmDensity === 'high' ? synthesizers.trumpet :
-                                   params.rhythmDensity === 'medium' ? synthesizers.guitar :
-                                   synthesizers.melody; // Use softer melody for calm moods
+            if (params.structure === 'bass_intro_then_guitar') {
+                // Special structure for happy mood
 
-            // Create melody part with humanization and occasional grace notes (simulates slides/bends)
-            const melodyEvents = [];
-            melodySequence.forEach((note, i) => {
-                const baseTime = i * Tone.Time(sequenceInterval).toSeconds();
-                const timing = baseTime + (Math.random() * 0.01 - 0.005);
+                // 1. Bass intro
+                synthParts.bass = new Tone.Part((time, note) => {
+                    synthesizers.bass.triggerAttackRelease(note, '2n', time);
+                }, params.bassNotes.map((note, i) => [i * 2, note]));
+                synthParts.bass.loop = true;
+                synthParts.bass.loopEnd = params.bassNotes.length * 2;
+                synthParts.bass.start(0);
 
-                // 15% chance to add a grace note (slide effect) - less frequent
-                if (Math.random() > 0.85) {
-                    // Quick grace note before main note (simulates slide/bend)
-                    const graceNote = Tone.Frequency(note).transpose(-2); // 2 semitones below
-                    melodyEvents.push([timing - 0.05, { note: graceNote, isGrace: true }]);
-                }
+                // 2. Guitar melody with ramp-up
+                const guitar = synthesizers.guitar;
+                guitar.volume.value = -20; // Start quiet
+                guitar.volume.rampTo(0, 8); // Ramp up to full volume over 8 seconds
 
-                // Main note - play 90% of time (more notes, less sparse)
-                if (Math.random() > 0.1) {
-                    melodyEvents.push([timing, { note: note, isGrace: false }]);
-                }
-            });
-
-            synthParts.melody = new Tone.Part((time, noteData) => {
-                const velocity = noteData.isGrace ? 0.3 : (0.7 + Math.random() * 0.3); // More consistent velocity
-                const duration = noteData.isGrace ? '32n' : noteDuration;
-                leadInstrument.triggerAttackRelease(noteData.note, duration, time, velocity);
-            }, melodyEvents);
-            synthParts.melody.loop = true;
-            synthParts.melody.loopEnd = melodySequence.length * Tone.Time(sequenceInterval).toSeconds();
-
-            // Use piano for chords in upbeat moods, pads for calm moods
-            const chordInstrument = params.rhythmDensity !== 'low' ? synthesizers.piano : synthesizers.pads;
-
-            // Create chord progression
-            synthParts.chords = new Tone.Part((time, chord) => {
-                const velocity = 0.7 + (Math.random() * 0.2);
-                chordInstrument.triggerAttackRelease(chord, '1n', time, velocity);
-            }, params.chords.map((chord, i) => [i * 2, chord]));
-            synthParts.chords.loop = true;
-            synthParts.chords.loopEnd = params.chords.length * 2;
-
-            // Create bassline with leading tones (chromatic approach notes)
-            const bassSequence = [];
-            params.bassNotes.forEach((note, i) => {
-                const beatTime = i * 2;
-                // Main bass note (root tone)
-                bassSequence.push([beatTime, { note: note, type: 'root' }]);
-
-                // Add leading tone before next chord (small tone leading up)
-                if (i < params.bassNotes.length - 1) {
-                    const nextNote = params.bassNotes[i + 1];
-                    const currentFreq = Tone.Frequency(note).toFrequency();
-                    const nextFreq = Tone.Frequency(nextNote).toFrequency();
-
-                    // Add a passing tone between notes
-                    if (Math.random() > 0.5) {
-                        const leadingTone = nextFreq > currentFreq ?
-                            Tone.Frequency(nextNote).transpose(-1) : // Approach from below
-                            Tone.Frequency(nextNote).transpose(1);   // Approach from above
-                        bassSequence.push([beatTime + 1.75, { note: leadingTone, type: 'leading' }]);
+                const melodyEvents = [];
+                melodySequence.forEach((note, i) => {
+                    const baseTime = i * Tone.Time(sequenceInterval).toSeconds();
+                    const timing = baseTime + (Math.random() * 0.01 - 0.005);
+                    if (Math.random() > 0.1) {
+                        melodyEvents.push([timing, { note: note, isGrace: false }]);
                     }
-                }
-            });
+                });
 
-            synthParts.bass = new Tone.Part((time, noteData) => {
-                const timing = time + (Math.random() * 0.02 - 0.01);
-                const velocity = noteData.type === 'root' ? 0.9 : 0.6; // Leading tones softer
-                const duration = noteData.type === 'root' ? '2n' : '16n';
-                synthesizers.bass.triggerAttackRelease(noteData.note, duration, timing, velocity);
-            }, bassSequence);
-            synthParts.bass.loop = true;
-            synthParts.bass.loopEnd = params.bassNotes.length * 2;
+                synthParts.melody = new Tone.Part((time, noteData) => {
+                    const velocity = 0.7 + Math.random() * 0.3;
+                    guitar.triggerAttackRelease(noteData.note, noteDuration, time, velocity);
+                }, melodyEvents);
+                synthParts.melody.loop = true;
+                synthParts.melody.loopEnd = melodySequence.length * Tone.Time(sequenceInterval).toSeconds();
+                synthParts.melody.start('2m'); // Start after 2 measures
 
-            // Create drum patterns based on rhythm density
-            let kickPattern, snarePattern, hihatPattern;
-
-            if (params.rhythmDensity === 'high') {
-                // Fast, energetic drums
-                kickPattern = new Tone.Loop((time) => {
+                // 3. Drums and chords start after bass intro
+                const kickPattern = new Tone.Loop((time) => {
                     kick.triggerAttackRelease('C1', '8n', time);
                 }, '4n');
+                kickPattern.start('2m');
 
-                snarePattern = new Tone.Loop((time) => {
+                const snarePattern = new Tone.Loop((time) => {
                     snare.triggerAttackRelease('8n', time);
                 }, '2n');
+                snarePattern.start('2m');
 
-                hihatPattern = new Tone.Loop((time) => {
-                    hihat.triggerAttackRelease('32n', time);
-                }, '8n');
-            } else if (params.rhythmDensity === 'medium') {
-                // Moderate groove
-                kickPattern = new Tone.Loop((time) => {
-                    kick.triggerAttackRelease('C1', '8n', time);
-                }, '4n');
-
-                snarePattern = new Tone.Loop((time) => {
-                    snare.triggerAttackRelease('8n', time);
-                }, '2n');
-
-                hihatPattern = new Tone.Loop((time) => {
+                const hihatPattern = new Tone.Loop((time) => {
                     hihat.triggerAttackRelease('32n', time);
                 }, '4n');
+                hihatPattern.start('2m');
+
+                const shakerPattern = new Tone.Loop((time) => {
+                    if (Math.random() > 0.4) {
+                        shaker.triggerAttackRelease('32n', time);
+                    }
+                }, '16n');
+                shakerPattern.start('2m');
+
+                synthParts.kickPattern = kickPattern;
+                synthParts.snarePattern = snarePattern;
+                synthParts.hihatPattern = hihatPattern;
+                synthParts.shakerPattern = shakerPattern;
+
+                synthParts.chords = new Tone.Part((time, chord) => {
+                    const velocity = 0.7 + (Math.random() * 0.2);
+                    synthesizers.piano.triggerAttackRelease(chord, '1n', time, velocity);
+                }, params.chords.map((chord, i) => [i * 2, chord]));
+                synthParts.chords.loop = true;
+                synthParts.chords.loopEnd = params.chords.length * 2;
+                synthParts.chords.start('2m');
+
             } else {
-                // Slow, minimal drums
-                kickPattern = new Tone.Loop((time) => {
-                    kick.triggerAttackRelease('C1', '8n', time);
-                }, '2n');
+                // Default structure for other moods
 
-                snarePattern = new Tone.Loop((time) => {
-                    snare.triggerAttackRelease('8n', time);
-                }, '1m');
+                // Choose instrument based on mood - different moods get different lead instruments
+                const leadInstrument = params.rhythmDensity === 'high' ? synthesizers.trumpet :
+                                       params.rhythmDensity === 'medium' ? synthesizers.guitar :
+                                       synthesizers.melody; // Use softer melody for calm moods
 
-                hihatPattern = new Tone.Loop((time) => {
-                    if (Math.random() > 0.3) { // Sparse hi-hats
-                        hihat.triggerAttackRelease('32n', time);
+                // Create melody part with humanization and occasional grace notes (simulates slides/bends)
+                const melodyEvents = [];
+                melodySequence.forEach((note, i) => {
+                    const baseTime = i * Tone.Time(sequenceInterval).toSeconds();
+                    const timing = baseTime + (Math.random() * 0.01 - 0.005);
+
+                    // 15% chance to add a grace note (slide effect) - less frequent
+                    if (Math.random() > 0.85) {
+                        // Quick grace note before main note (simulates slide/bend)
+                        const graceNote = Tone.Frequency(note).transpose(-2); // 2 semitones below
+                        melodyEvents.push([timing - 0.05, { note: graceNote, isGrace: true }]);
                     }
-                }, '2n');
-            }
 
-            // Add shaker pattern for texture (16th notes, sparse)
-            const shakerPattern = new Tone.Loop((time) => {
-                if (Math.random() > 0.4) { // 60% probability for natural feel
-                    shaker.triggerAttackRelease('32n', time);
+                    // Main note - play 90% of time (more notes, less sparse)
+                    if (Math.random() > 0.1) {
+                        melodyEvents.push([timing, { note: note, isGrace: false }]);
+                    }
+                });
+
+                synthParts.melody = new Tone.Part((time, noteData) => {
+                    const velocity = noteData.isGrace ? 0.3 : (0.7 + Math.random() * 0.3); // More consistent velocity
+                    const duration = noteData.isGrace ? '32n' : noteDuration;
+                    leadInstrument.triggerAttackRelease(noteData.note, duration, time, velocity);
+                }, melodyEvents);
+                synthParts.melody.loop = true;
+                synthParts.melody.loopEnd = melodySequence.length * Tone.Time(sequenceInterval).toSeconds();
+
+                // Use piano for chords in upbeat moods, pads for calm moods
+                const chordInstrument = params.rhythmDensity !== 'low' ? synthesizers.piano : synthesizers.pads;
+
+                // Create chord progression
+                synthParts.chords = new Tone.Part((time, chord) => {
+                    const velocity = 0.7 + (Math.random() * 0.2);
+                    chordInstrument.triggerAttackRelease(chord, '1n', time, velocity);
+                }, params.chords.map((chord, i) => [i * 2, chord]));
+                synthParts.chords.loop = true;
+                synthParts.chords.loopEnd = params.chords.length * 2;
+
+                // Create bassline with leading tones (chromatic approach notes)
+                const bassSequence = [];
+                params.bassNotes.forEach((note, i) => {
+                    const beatTime = i * 2;
+                    // Main bass note (root tone)
+                    bassSequence.push([beatTime, { note: note, type: 'root' }]);
+
+                    // Add leading tone before next chord (small tone leading up)
+                    if (i < params.bassNotes.length - 1) {
+                        const nextNote = params.bassNotes[i + 1];
+                        const currentFreq = Tone.Frequency(note).toFrequency();
+                        const nextFreq = Tone.Frequency(nextNote).toFrequency();
+
+                        // Add a passing tone between notes
+                        if (Math.random() > 0.5) {
+                            const leadingTone = nextFreq > currentFreq ?
+                                Tone.Frequency(nextNote).transpose(-1) : // Approach from below
+                                Tone.Frequency(nextNote).transpose(1);   // Approach from above
+                            bassSequence.push([beatTime + 1.75, { note: leadingTone, type: 'leading' }]);
+                        }
+                    }
+                });
+
+                synthParts.bass = new Tone.Part((time, noteData) => {
+                    const timing = time + (Math.random() * 0.02 - 0.01);
+                    const velocity = noteData.type === 'root' ? 0.9 : 0.6; // Leading tones softer
+                    const duration = noteData.type === 'root' ? '2n' : '16n';
+                    synthesizers.bass.triggerAttackRelease(noteData.note, duration, timing, velocity);
+                }, bassSequence);
+                synthParts.bass.loop = true;
+                synthParts.bass.loopEnd = params.bassNotes.length * 2;
+
+                // Create drum patterns based on rhythm density
+                let kickPattern, snarePattern, hihatPattern;
+
+                if (params.rhythmDensity === 'high') {
+                    // Fast, energetic drums
+                    kickPattern = new Tone.Loop((time) => {
+                        kick.triggerAttackRelease('C1', '8n', time);
+                    }, '4n');
+
+                    snarePattern = new Tone.Loop((time) => {
+                        snare.triggerAttackRelease('8n', time);
+                    }, '2n');
+
+                    hihatPattern = new Tone.Loop((time) => {
+                        hihat.triggerAttackRelease('32n', time);
+                    }, '8n');
+                } else if (params.rhythmDensity === 'medium') {
+                    // Moderate groove
+                    kickPattern = new Tone.Loop((time) => {
+                        kick.triggerAttackRelease('C1', '8n', time);
+                    }, '4n');
+
+                    snarePattern = new Tone.Loop((time) => {
+                        snare.triggerAttackRelease('8n', time);
+                    }, '2n');
+
+                    hihatPattern = new Tone.Loop((time) => {
+                        hihat.triggerAttackRelease('32n', time);
+                    }, '4n');
+                } else {
+                    // Slow, minimal drums
+                    kickPattern = new Tone.Loop((time) => {
+                        kick.triggerAttackRelease('C1', '8n', time);
+                    }, '2n');
+
+                    snarePattern = new Tone.Loop((time) => {
+                        snare.triggerAttackRelease('8n', time);
+                    }, '1m');
+
+                    hihatPattern = new Tone.Loop((time) => {
+                        if (Math.random() > 0.3) { // Sparse hi-hats
+                            hihat.triggerAttackRelease('32n', time);
+                        }
+                    }, '2n');
                 }
-            }, '16n');
 
-            // Start drum patterns
-            kickPattern.start(0);
-            snarePattern.start('4n'); // Snare on beat 2 and 4
-            hihatPattern.start(0);
-            shakerPattern.start(0);
+                // Add shaker pattern for texture (16th notes, sparse)
+                const shakerPattern = new Tone.Loop((time) => {
+                    if (Math.random() > 0.4) { // 60% probability for natural feel
+                        shaker.triggerAttackRelease('32n', time);
+                    }
+                }, '16n');
 
-            // Store drum patterns for cleanup
-            synthParts.kickPattern = kickPattern;
-            synthParts.snarePattern = snarePattern;
-            synthParts.hihatPattern = hihatPattern;
-            synthParts.shakerPattern = shakerPattern;
+                // Start drum patterns
+                kickPattern.start(0);
+                snarePattern.start('4n'); // Snare on beat 2 and 4
+                hihatPattern.start(0);
+                shakerPattern.start(0);
 
-            // Start all parts
-            synthParts.melody.start(0);
-            synthParts.chords.start(0);
-            synthParts.bass.start(0);
+                // Store drum patterns for cleanup
+                synthParts.kickPattern = kickPattern;
+                synthParts.snarePattern = snarePattern;
+                synthParts.hihatPattern = hihatPattern;
+                synthParts.shakerPattern = shakerPattern;
+
+                // Start all parts
+                synthParts.melody.start(0);
+                synthParts.chords.start(0);
+                synthParts.bass.start(0);
+            }
         }
 
         function stopMusic() {

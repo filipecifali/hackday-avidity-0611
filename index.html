@@ -86,14 +86,7 @@
     </div>
 
     <script>
-        // Music generation variables - Hybrid System
-        let audioPlayers = {
-            drums: null,
-            bass: null,
-            chords: null,
-            melody: null,
-            pads: null
-        };
+        // Music generation variables
         let synthesizers = {
             melody: null,
             pads: null,
@@ -107,28 +100,11 @@
         let reverb = null;
         let filter = null;
         let isPlaying = false;
-        let useSynthFallback = false;
 
         // Mood to musical parameter mapping
         const moodMappings = {
             happy: {
                 tempo: 120,
-                // Audio stem files
-                stems: {
-                    drums: 'audio/stems/drums/happy_drums_01.mp3',
-                    bass: 'audio/stems/bass/happy_bass_01.mp3',
-                    chords: 'audio/stems/chords/happy_chords_01.mp3',
-                    melody: 'audio/stems/melody/happy_melody_01.mp3',
-                    pads: 'audio/stems/pads/happy_pads_01.mp3'
-                },
-                // Stem mixing levels (0-1)
-                stemLevels: {
-                    drums: 0.8,
-                    bass: 0.7,
-                    chords: 0.6,
-                    melody: 0.9,
-                    pads: 0.4
-                },
                 // Fallback synthesis parameters
                 scale: ['C4', 'D4', 'E4', 'G4', 'A4', 'C5', 'D5', 'E5'],
                 chords: [
@@ -149,20 +125,6 @@
             },
             energetic: {
                 tempo: 140,
-                stems: {
-                    drums: 'audio/stems/drums/energetic_drums_01.mp3',
-                    bass: 'audio/stems/bass/energetic_bass_01.mp3',
-                    chords: 'audio/stems/chords/energetic_chords_01.mp3',
-                    melody: 'audio/stems/melody/energetic_melody_01.mp3',
-                    pads: 'audio/stems/pads/energetic_pads_01.mp3'
-                },
-                stemLevels: {
-                    drums: 1.0,
-                    bass: 0.8,
-                    chords: 0.7,
-                    melody: 0.9,
-                    pads: 0.3
-                },
                 scale: ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5'],
                 chords: [
                     ['C3', 'E3', 'G3', 'B3'],
@@ -182,20 +144,6 @@
             },
             calm: {
                 tempo: 70,
-                stems: {
-                    drums: 'audio/stems/drums/calm_drums_01.mp3',
-                    bass: 'audio/stems/bass/calm_bass_01.mp3',
-                    chords: 'audio/stems/chords/calm_chords_01.mp3',
-                    melody: 'audio/stems/melody/calm_melody_01.mp3',
-                    pads: 'audio/stems/pads/calm_pads_01.mp3'
-                },
-                stemLevels: {
-                    drums: 0.3,
-                    bass: 0.5,
-                    chords: 0.6,
-                    melody: 0.7,
-                    pads: 0.7
-                },
                 scale: ['C4', 'D4', 'E4', 'G4', 'A4', 'C5'],
                 chords: [
                     ['C3', 'E3', 'G3', 'D4'],
@@ -215,20 +163,6 @@
             },
             sad: {
                 tempo: 65,
-                stems: {
-                    drums: 'audio/stems/drums/sad_drums_01.mp3',
-                    bass: 'audio/stems/bass/sad_bass_01.mp3',
-                    chords: 'audio/stems/chords/sad_chords_01.mp3',
-                    melody: 'audio/stems/melody/sad_melody_01.mp3',
-                    pads: 'audio/stems/pads/sad_pads_01.mp3'
-                },
-                stemLevels: {
-                    drums: 0.2,
-                    bass: 0.5,
-                    chords: 0.6,
-                    melody: 0.8,
-                    pads: 0.8
-                },
                 scale: ['C4', 'D4', 'Eb4', 'F4', 'G4', 'Ab4', 'Bb4', 'C5'],
                 chords: [
                     ['C3', 'Eb3', 'G3'],
@@ -248,20 +182,6 @@
             },
             peaceful: {
                 tempo: 60,
-                stems: {
-                    drums: 'audio/stems/drums/peaceful_drums_01.mp3',
-                    bass: 'audio/stems/bass/peaceful_bass_01.mp3',
-                    chords: 'audio/stems/chords/peaceful_chords_01.mp3',
-                    melody: 'audio/stems/melody/peaceful_melody_01.mp3',
-                    pads: 'audio/stems/pads/peaceful_pads_01.mp3'
-                },
-                stemLevels: {
-                    drums: 0.1,
-                    bass: 0.4,
-                    chords: 0.5,
-                    melody: 0.6,
-                    pads: 0.9
-                },
                 scale: ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'C5'],
                 chords: [
                     ['C3', 'E3', 'G3', 'B3'],
@@ -281,20 +201,6 @@
             },
             excited: {
                 tempo: 150,
-                stems: {
-                    drums: 'audio/stems/drums/excited_drums_01.mp3',
-                    bass: 'audio/stems/bass/excited_bass_01.mp3',
-                    chords: 'audio/stems/chords/excited_chords_01.mp3',
-                    melody: 'audio/stems/melody/excited_melody_01.mp3',
-                    pads: 'audio/stems/pads/excited_pads_01.mp3'
-                },
-                stemLevels: {
-                    drums: 1.0,
-                    bass: 0.9,
-                    chords: 0.7,
-                    melody: 1.0,
-                    pads: 0.4
-                },
                 scale: ['C4', 'D4', 'E4', 'F#4', 'G4', 'A4', 'B4', 'C5', 'D5'],
                 chords: [
                     ['C3', 'E3', 'G3'],
@@ -369,64 +275,13 @@
                 rolloff: -12
             }).connect(reverb);
 
-            // Try to load audio stems first
-            let stemsLoaded = false;
-            try {
-                stemsLoaded = await loadAndPlayStems(params);
-            } catch (error) {
-                console.log('Stems not available, using synthesis fallback:', error.message);
-                useSynthFallback = true;
-            }
-
-            // If stems failed to load, use synthesis fallback
-            if (!stemsLoaded) {
-                await playSynthesizedMusic(params);
-            }
+            await playSynthesizedMusic(params);
 
             Tone.Transport.start();
 
             isPlaying = true;
             document.getElementById('playbackControls').style.display = 'block';
-            const modeText = useSynthFallback ? '(Synthesized)' : '(High Quality Stems)';
-            showStatus(`Playing music for mood: "${mood}" ${modeText} - ${params.tempo} BPM`, 'success');
-        }
-
-        async function loadAndPlayStems(params) {
-            const stemTypes = ['drums', 'bass', 'chords', 'melody', 'pads'];
-            let loadedCount = 0;
-
-            // Attempt to load all stems
-            for (const stemType of stemTypes) {
-                try {
-                    const stemPath = params.stems[stemType];
-                    const player = new Tone.Player({
-                        url: stemPath,
-                        loop: true,
-                        volume: Tone.gainToDb(params.stemLevels[stemType])
-                    }).connect(filter);
-
-                    await player.load();
-                    audioPlayers[stemType] = player;
-                    loadedCount++;
-                    console.log(`Loaded stem: ${stemType}`);
-                } catch (error) {
-                    console.warn(`Failed to load ${stemType} stem:`, error);
-                }
-            }
-
-            // If we loaded at least some stems, start playback
-            if (loadedCount > 0) {
-                // Sync all players and start them together
-                for (const stemType of stemTypes) {
-                    if (audioPlayers[stemType]) {
-                        audioPlayers[stemType].sync().start(0);
-                    }
-                }
-                useSynthFallback = false;
-                return true;
-            }
-
-            return false;
+            showStatus(`Playing music for mood: "${mood}" (Synthesized) - ${params.tempo} BPM`, 'success');
         }
 
         async function playSynthesizedMusic(params) {
@@ -646,20 +501,9 @@
             synthParts.melody.start(0);
             synthParts.chords.start(0);
             synthParts.bass.start(0);
-
-            useSynthFallback = true;
         }
 
         function stopMusic() {
-            // Stop and dispose audio players (stems)
-            for (const stemType in audioPlayers) {
-                if (audioPlayers[stemType]) {
-                    audioPlayers[stemType].stop();
-                    audioPlayers[stemType].dispose();
-                    audioPlayers[stemType] = null;
-                }
-            }
-
             // Stop and dispose synthesizer parts
             for (const partName in synthParts) {
                 if (synthParts[partName]) {
@@ -691,7 +535,6 @@
             Tone.Transport.cancel();
 
             isPlaying = false;
-            useSynthFallback = false;
             document.getElementById('playbackControls').style.display = 'none';
             showStatus('Music stopped', 'info');
         }

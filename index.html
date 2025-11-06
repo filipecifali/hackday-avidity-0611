@@ -334,27 +334,94 @@
                 volume: -15
             }).toDestination();
 
+            // Add shaker for texture
+            const shaker = new Tone.NoiseSynth({
+                noise: { type: 'pink' },
+                envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.05 },
+                volume: -20
+            }).toDestination();
+
             // Create enhanced effects chain
             const chorus = new Tone.Chorus(4, 2.5, 0.5).start();
             const delay = new Tone.FeedbackDelay('8n', 0.3);
             const compressor = new Tone.Compressor(-20, 3);
+            const tremolo = new Tone.Tremolo(6, 0.3).start();
 
-            // Create melody synthesizer with FM synthesis for brass-like sound
+            // Electric Piano (Rhodes-like sound)
+            synthesizers.electricPiano = new Tone.PolySynth(Tone.FMSynth, {
+                harmonicity: 1.5,
+                modulationIndex: 12,
+                oscillator: { type: 'sine' },
+                envelope: {
+                    attack: 0.01,
+                    decay: 0.4,
+                    sustain: 0.3,
+                    release: 1.5
+                },
+                modulation: { type: 'sine' },
+                modulationEnvelope: {
+                    attack: 0.01,
+                    decay: 0.3,
+                    sustain: 0.1,
+                    release: 0.5
+                },
+                volume: -6
+            }).chain(tremolo, chorus, filter);
+
+            // Brass/Saxophone (FM synthesis with slides)
+            synthesizers.brass = new Tone.PolySynth(Tone.FMSynth, {
+                harmonicity: 3.5,
+                modulationIndex: 20,
+                oscillator: { type: 'sine' },
+                envelope: {
+                    attack: 0.08,
+                    decay: 0.3,
+                    sustain: 0.6,
+                    release: 1.2
+                },
+                modulation: { type: 'sawtooth' },
+                modulationEnvelope: {
+                    attack: 0.1,
+                    decay: 0.2,
+                    sustain: 0.8,
+                    release: 1.0
+                },
+                volume: -10
+            }).chain(delay, compressor, filter);
+
+            // Trumpet (higher, brighter brass)
+            synthesizers.trumpet = new Tone.PolySynth(Tone.FMSynth, {
+                harmonicity: 4,
+                modulationIndex: 15,
+                oscillator: { type: 'sine' },
+                envelope: {
+                    attack: 0.05,
+                    decay: 0.2,
+                    sustain: 0.7,
+                    release: 0.8
+                },
+                modulation: { type: 'square' },
+                modulationEnvelope: {
+                    attack: 0.15,
+                    decay: 0.1,
+                    sustain: 0.7,
+                    release: 0.6
+                },
+                volume: -12
+            }).chain(delay, compressor, filter);
+
+            // Keep original melody synth as backup
             synthesizers.melody = new Tone.PolySynth(Tone.FMSynth, {
                 harmonicity: 3,
                 modulationIndex: 10,
-                oscillator: {
-                    type: 'sine'
-                },
+                oscillator: { type: 'sine' },
                 envelope: {
                     attack: 0.01,
                     decay: 0.2,
                     sustain: 0.3,
                     release: 1
                 },
-                modulation: {
-                    type: 'square'
-                },
+                modulation: { type: 'square' },
                 modulationEnvelope: {
                     attack: 0.2,
                     decay: 0.01,
@@ -411,11 +478,13 @@
             synthesizers.chorus = chorus;
             synthesizers.delay = delay;
             synthesizers.compressor = compressor;
+            synthesizers.tremolo = tremolo;
 
             // Store drum synths for cleanup
             synthesizers.kick = kick;
             synthesizers.snare = snare;
             synthesizers.hihat = hihat;
+            synthesizers.shaker = shaker;
 
             // Generate melody sequence based on pattern
             const melodySequence = params.melodyPattern.map(index => params.scale[index]);
@@ -433,35 +502,71 @@
                 sequenceInterval = '2n';
             }
 
-            // Create melody part with humanization (velocity and timing variations)
+            // Choose instrument based on mood - different moods get different lead instruments
+            const leadInstrument = params.rhythmDensity === 'high' ? synthesizers.trumpet :
+                                   params.rhythmDensity === 'medium' ? synthesizers.brass :
+                                   synthesizers.melody; // Use softer melody for calm moods
+
+            // Create melody part with humanization and pitch slides
             synthParts.melody = new Tone.Part((time, note) => {
-                // Add timing humanization (slight swing/delay)
                 const timing = time + (Math.random() * 0.01 - 0.005);
-                // Add velocity variation
                 const velocity = 0.6 + (Math.random() * 0.4);
 
-                // Add some variation - occasionally skip notes or add rests
-                if (Math.random() > 0.2) { // 80% chance to play
-                    synthesizers.melody.triggerAttackRelease(note, noteDuration, timing, velocity);
+                if (Math.random() > 0.2) {
+                    // Add pitch bends/slides (portamento effect)
+                    if (Math.random() > 0.6) { // 40% chance of slide
+                        const startNote = Tone.Frequency(note).transpose(-2); // Start 2 semitones below
+                        leadInstrument.triggerAttack(startNote, timing, velocity);
+                        leadInstrument.frequency.exponentialRampTo(note, 0.08, timing); // Slide up
+                        leadInstrument.triggerRelease(timing + Tone.Time(noteDuration).toSeconds());
+                    } else {
+                        leadInstrument.triggerAttackRelease(note, noteDuration, timing, velocity);
+                    }
                 }
             }, melodySequence.map((note, i) => [i * Tone.Time(sequenceInterval).toSeconds(), note]));
             synthParts.melody.loop = true;
             synthParts.melody.loopEnd = melodySequence.length * Tone.Time(sequenceInterval).toSeconds();
 
-            // Create chord progression with slight variations
+            // Use electric piano for chords in upbeat moods, pads for calm moods
+            const chordInstrument = params.rhythmDensity !== 'low' ? synthesizers.electricPiano : synthesizers.pads;
+
+            // Create chord progression
             synthParts.chords = new Tone.Part((time, chord) => {
-                const velocity = 0.7 + (Math.random() * 0.2); // Velocity variation
-                synthesizers.pads.triggerAttackRelease(chord, '1n', time, velocity);
-            }, params.chords.map((chord, i) => [i * 2, chord])); // Each chord lasts 2 measures
+                const velocity = 0.7 + (Math.random() * 0.2);
+                chordInstrument.triggerAttackRelease(chord, '1n', time, velocity);
+            }, params.chords.map((chord, i) => [i * 2, chord]));
             synthParts.chords.loop = true;
             synthParts.chords.loopEnd = params.chords.length * 2;
 
-            // Create bassline with groove (slight timing variations)
-            synthParts.bass = new Tone.Part((time, note) => {
-                const timing = time + (Math.random() * 0.02 - 0.01); // Groove
-                const velocity = 0.8 + (Math.random() * 0.2);
-                synthesizers.bass.triggerAttackRelease(note, '2n', timing, velocity);
-            }, params.bassNotes.map((note, i) => [i * 2, note]));
+            // Create bassline with leading tones (chromatic approach notes)
+            const bassSequence = [];
+            params.bassNotes.forEach((note, i) => {
+                const beatTime = i * 2;
+                // Main bass note (root tone)
+                bassSequence.push([beatTime, { note: note, type: 'root' }]);
+
+                // Add leading tone before next chord (small tone leading up)
+                if (i < params.bassNotes.length - 1) {
+                    const nextNote = params.bassNotes[i + 1];
+                    const currentFreq = Tone.Frequency(note).toFrequency();
+                    const nextFreq = Tone.Frequency(nextNote).toFrequency();
+
+                    // Add a passing tone between notes
+                    if (Math.random() > 0.5) {
+                        const leadingTone = nextFreq > currentFreq ?
+                            Tone.Frequency(nextNote).transpose(-1) : // Approach from below
+                            Tone.Frequency(nextNote).transpose(1);   // Approach from above
+                        bassSequence.push([beatTime + 1.75, { note: leadingTone, type: 'leading' }]);
+                    }
+                }
+            });
+
+            synthParts.bass = new Tone.Part((time, noteData) => {
+                const timing = time + (Math.random() * 0.02 - 0.01);
+                const velocity = noteData.type === 'root' ? 0.9 : 0.6; // Leading tones softer
+                const duration = noteData.type === 'root' ? '2n' : '16n';
+                synthesizers.bass.triggerAttackRelease(noteData.note, duration, timing, velocity);
+            }, bassSequence);
             synthParts.bass.loop = true;
             synthParts.bass.loopEnd = params.bassNotes.length * 2;
 
@@ -511,15 +616,24 @@
                 }, '2n');
             }
 
+            // Add shaker pattern for texture (16th notes, sparse)
+            const shakerPattern = new Tone.Loop((time) => {
+                if (Math.random() > 0.4) { // 60% probability for natural feel
+                    shaker.triggerAttackRelease('32n', time);
+                }
+            }, '16n');
+
             // Start drum patterns
             kickPattern.start(0);
             snarePattern.start('4n'); // Snare on beat 2 and 4
             hihatPattern.start(0);
+            shakerPattern.start(0);
 
             // Store drum patterns for cleanup
             synthParts.kickPattern = kickPattern;
             synthParts.snarePattern = snarePattern;
             synthParts.hihatPattern = hihatPattern;
+            synthParts.shakerPattern = shakerPattern;
 
             // Start all parts
             synthParts.melody.start(0);

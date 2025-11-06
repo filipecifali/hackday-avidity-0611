@@ -18,9 +18,11 @@
         }
         .container {
             background-color: #fff;
-            padding: 20px;
+            padding: 30px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            width: 100%;
         }
         label {
             display: block;
@@ -34,6 +36,38 @@
             border: 1px solid #ddd;
             border-radius: 4px;
         }
+        .selection-section {
+            margin-bottom: 25px;
+        }
+        .selection-section h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .button-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .preset-btn {
+            background-color: #e9ecef;
+            color: #333;
+            padding: 12px 15px;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 15px;
+            transition: all 0.2s;
+        }
+        .preset-btn:hover {
+            background-color: #dee2e6;
+            border-color: #adb5bd;
+        }
+        .preset-btn.selected {
+            background-color: #007bff;
+            color: white;
+            border-color: #0056b3;
+        }
         button {
             background-color: #007bff;
             color: white;
@@ -45,6 +79,17 @@
         }
         button:hover {
             background-color: #0056b3;
+        }
+        #generateBtn {
+            width: 100%;
+            padding: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        #generateBtn:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
         }
         #playbackControls {
             margin-top: 20px;
@@ -95,9 +140,29 @@
 </head>
 <body>
     <div class="container">
-        <label for="moodInput">Current mood:</label>
-        <input type="text" id="moodInput" placeholder="e.g., Happy, Calm, Energetic, Sad">
-        <button id="generateBtn">Generate Music</button>
+        <div class="selection-section">
+            <h3>Choose a Style:</h3>
+            <div class="button-grid">
+                <button class="preset-btn style-btn" data-style="rock">🎸 Rock</button>
+                <button class="preset-btn style-btn" data-style="jazz">🎷 Jazz</button>
+                <button class="preset-btn style-btn" data-style="electronic">🎹 Electronic</button>
+                <button class="preset-btn style-btn" data-style="classical">🎻 Classical</button>
+            </div>
+        </div>
+
+        <div class="selection-section">
+            <h3>Choose a Mood:</h3>
+            <div class="button-grid">
+                <button class="preset-btn mood-btn" data-mood="happy">😊 Happy</button>
+                <button class="preset-btn mood-btn" data-mood="sad">😢 Sad</button>
+                <button class="preset-btn mood-btn" data-mood="calm">😌 Calm</button>
+                <button class="preset-btn mood-btn" data-mood="energetic">⚡ Energetic</button>
+                <button class="preset-btn mood-btn" data-mood="peaceful">🕊️ Peaceful</button>
+                <button class="preset-btn mood-btn" data-mood="excited">🤩 Excited</button>
+            </div>
+        </div>
+
+        <button id="generateBtn" disabled>Generate Music</button>
 
         <div id="playbackControls">
             <button id="stopBtn" class="stop">Stop Music</button>
@@ -126,6 +191,50 @@
         let reverb = null;
         let filter = null;
         let isPlaying = false;
+
+        // User selection
+        let selectedStyle = null;
+        let selectedMood = null;
+
+        // Style parameter mappings - define musical characteristics for each genre
+        const styleMappings = {
+            rock: {
+                instrumentType: 'electric',
+                distortion: 0.8,
+                drumsPattern: 'fourOnFloor',
+                bassType: 'driving',
+                leadSynth: 'trumpet', // Aggressive, electric guitar-like
+                chordVoicing: 'power', // Power chords (root + fifth)
+                tempoMultiplier: 1.1
+            },
+            jazz: {
+                instrumentType: 'brass',
+                distortion: 0,
+                drumsPattern: 'swing',
+                bassType: 'walking',
+                leadSynth: 'brass', // Saxophone-like
+                chordVoicing: 'extended', // 7ths, 9ths
+                tempoMultiplier: 0.9
+            },
+            electronic: {
+                instrumentType: 'synth',
+                distortion: 0.3,
+                drumsPattern: 'electronic',
+                bassType: 'synth',
+                leadSynth: 'electricPiano',
+                chordVoicing: 'wide', // Wide spacing
+                tempoMultiplier: 1.2
+            },
+            classical: {
+                instrumentType: 'acoustic',
+                distortion: 0,
+                drumsPattern: 'minimal',
+                bassType: 'melodic',
+                leadSynth: 'melody', // Soft, string-like
+                chordVoicing: 'triad', // Simple triads
+                tempoMultiplier: 0.85
+            }
+        };
 
         // Mood to musical parameter mapping
         const moodMappings = {
@@ -293,6 +402,25 @@
             }
         };
 
+        // Combine style and mood parameters
+        function getCombinedParameters(style, mood) {
+            const styleParams = styleMappings[style];
+            const moodParams = moodMappings[mood];
+
+            // Merge parameters, applying style modifications to mood base
+            return {
+                ...moodParams,
+                tempo: Math.round(moodParams.tempo * styleParams.tempoMultiplier),
+                leadSynth: styleParams.leadSynth,
+                chordVoicing: styleParams.chordVoicing,
+                drumsPattern: styleParams.drumsPattern,
+                bassType: styleParams.bassType,
+                distortion: styleParams.distortion,
+                style: style,
+                mood: mood
+            };
+        }
+
         function getMoodParameters(mood) {
             const normalizedMood = mood.toLowerCase().trim();
 
@@ -313,10 +441,8 @@
         }
 
         async function generateMusic() {
-            const mood = document.getElementById('moodInput').value;
-
-            if (!mood) {
-                showStatus('Please enter a mood first!', 'error');
+            if (!selectedStyle || !selectedMood) {
+                showStatus('Please select both a style and a mood!', 'error');
                 return;
             }
 
@@ -329,11 +455,11 @@
             await Tone.start();
             console.log('Audio context started');
 
-            // Get mood parameters
-            const params = getMoodParameters(mood);
-            console.log('Mood parameters:', params);
+            // Get combined style + mood parameters
+            const params = getCombinedParameters(selectedStyle, selectedMood);
+            console.log('Combined parameters:', params);
 
-            // Set tempo
+            // Set tempo (mood tempo adjusted by style multiplier)
             Tone.Transport.bpm.value = params.tempo;
 
             // Create effects chain
@@ -355,7 +481,7 @@
             isPlaying = true;
             document.getElementById('playbackControls').style.display = 'block';
             document.getElementById('popeRat').style.display = 'block';
-            showStatus(`Playing music for mood: "${mood}" (Synthesized) - ${params.tempo} BPM`, 'success');
+            showStatus(`Playing ${selectedStyle.toUpperCase()} ${selectedMood} music - ${params.tempo} BPM`, 'success');
         }
 
         async function playSynthesizedMusic(params) {
@@ -615,17 +741,17 @@
                 trumpet: !!synthesizers.trumpet,
                 brass: !!synthesizers.brass,
                 melody: !!synthesizers.melody,
-                rhythmDensity: params.rhythmDensity
+                electricPiano: !!synthesizers.electricPiano,
+                rhythmDensity: params.rhythmDensity,
+                leadSynth: params.leadSynth
             });
 
-            // Choose instrument based on mood - different moods get different lead instruments
-            const leadInstrument = params.rhythmDensity === 'high' ? synthesizers.trumpet :
-                                   params.rhythmDensity === 'medium' ? synthesizers.brass :
-                                   synthesizers.melody; // Use softer melody for calm moods
+            // Choose instrument based on style's leadSynth parameter
+            const leadInstrument = synthesizers[params.leadSynth] || synthesizers.melody;
 
             if (!leadInstrument) {
                 console.error('leadInstrument is undefined!', {
-                    rhythmDensity: params.rhythmDensity,
+                    requestedSynth: params.leadSynth,
                     synthesizers: Object.keys(synthesizers)
                 });
                 return; // Exit early to prevent error
@@ -701,50 +827,74 @@
             synthParts.bass.loop = true;
             synthParts.bass.loopEnd = params.bassNotes.length * 2;
 
-            // Create drum patterns based on rhythm density
+            // Create drum patterns based on style's drum pattern and mood's rhythm density
             let kickPattern, snarePattern, hihatPattern;
+            const drumStyle = params.drumsPattern || 'fourOnFloor';
 
-            if (params.rhythmDensity === 'high') {
-                // Fast, energetic drums
+            if (drumStyle === 'fourOnFloor' || drumStyle === 'electronic') {
+                // Rock/Electronic: Four-on-the-floor kick
+                const kickInterval = params.rhythmDensity === 'high' ? '4n' : params.rhythmDensity === 'medium' ? '4n' : '2n';
                 kickPattern = new Tone.Loop((time) => {
                     kick.triggerAttackRelease('C1', '8n', time);
-                }, '4n');
+                }, kickInterval);
 
                 snarePattern = new Tone.Loop((time) => {
                     snare.triggerAttackRelease('8n', time);
-                }, '2n');
+                }, '2n'); // Backbeat on 2 and 4
 
+                const hihatInterval = drumStyle === 'electronic' ? '16n' : (params.rhythmDensity === 'high' ? '8n' : '4n');
                 hihatPattern = new Tone.Loop((time) => {
                     hihat.triggerAttackRelease('32n', time);
-                }, '8n');
-            } else if (params.rhythmDensity === 'medium') {
-                // Moderate groove
+                }, hihatInterval);
+
+            } else if (drumStyle === 'swing') {
+                // Jazz: Swing pattern
                 kickPattern = new Tone.Loop((time) => {
                     kick.triggerAttackRelease('C1', '8n', time);
-                }, '4n');
+                }, '2n'); // Softer kick
 
                 snarePattern = new Tone.Loop((time) => {
-                    snare.triggerAttackRelease('8n', time);
-                }, '2n');
+                    if (Math.random() > 0.3) { // Syncopated snare
+                        snare.triggerAttackRelease('32n', time, 0.3);
+                    }
+                }, '4n');
 
                 hihatPattern = new Tone.Loop((time) => {
-                    hihat.triggerAttackRelease('32n', time);
-                }, '4n');
-            } else {
-                // Slow, minimal drums
+                    const velocity = Math.random() * 0.3 + 0.2; // Variable intensity
+                    hihat.triggerAttackRelease('32n', time, velocity);
+                }, '8t'); // Triplet feel for swing
+
+            } else if (drumStyle === 'minimal') {
+                // Classical: Minimal/no drums
                 kickPattern = new Tone.Loop((time) => {
-                    kick.triggerAttackRelease('C1', '8n', time);
-                }, '2n');
+                    if (Math.random() > 0.7) { // Very sparse
+                        kick.triggerAttackRelease('C1', '8n', time, 0.2);
+                    }
+                }, '1m');
 
                 snarePattern = new Tone.Loop((time) => {
-                    snare.triggerAttackRelease('8n', time);
+                    // Barely any snare
                 }, '1m');
 
                 hihatPattern = new Tone.Loop((time) => {
-                    if (Math.random() > 0.3) { // Sparse hi-hats
-                        hihat.triggerAttackRelease('32n', time);
+                    if (Math.random() > 0.6) { // Sparse texture
+                        hihat.triggerAttackRelease('32n', time, 0.15);
                     }
                 }, '2n');
+            } else {
+                // Default: Based on rhythm density
+                const kickInterval = params.rhythmDensity === 'high' ? '4n' : params.rhythmDensity === 'medium' ? '4n' : '2n';
+                kickPattern = new Tone.Loop((time) => {
+                    kick.triggerAttackRelease('C1', '8n', time);
+                }, kickInterval);
+
+                snarePattern = new Tone.Loop((time) => {
+                    snare.triggerAttackRelease('8n', time);
+                }, '2n');
+
+                hihatPattern = new Tone.Loop((time) => {
+                    hihat.triggerAttackRelease('32n', time);
+                }, params.rhythmDensity === 'high' ? '8n' : '4n');
             }
 
             // Add shaker pattern for texture (16th notes, sparse)
@@ -817,16 +967,45 @@
                                              type === 'success' ? '#d4edda' : '#e9ecef';
         }
 
+        // Event listeners for style selection
+        document.querySelectorAll('.style-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                // Remove selected class from all style buttons
+                document.querySelectorAll('.style-btn').forEach(b => b.classList.remove('selected'));
+                // Add selected class to clicked button
+                this.classList.add('selected');
+                selectedStyle = this.dataset.style;
+                checkSelections();
+            });
+        });
+
+        // Event listeners for mood selection
+        document.querySelectorAll('.mood-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                // Remove selected class from all mood buttons
+                document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+                // Add selected class to clicked button
+                this.classList.add('selected');
+                selectedMood = this.dataset.mood;
+                checkSelections();
+            });
+        });
+
+        // Check if both selections are made and enable generate button
+        function checkSelections() {
+            const generateBtn = document.getElementById('generateBtn');
+            if (selectedStyle && selectedMood) {
+                generateBtn.disabled = false;
+                generateBtn.textContent = `Generate ${selectedStyle.charAt(0).toUpperCase() + selectedStyle.slice(1)} ${selectedMood.charAt(0).toUpperCase() + selectedMood.slice(1)} Music`;
+            } else {
+                generateBtn.disabled = true;
+                generateBtn.textContent = 'Generate Music';
+            }
+        }
+
         // Event listeners
         document.getElementById('generateBtn').addEventListener('click', generateMusic);
         document.getElementById('stopBtn').addEventListener('click', stopMusic);
-
-        // Allow Enter key to submit
-        document.getElementById('moodInput').addEventListener('keypress', function(event) {
-            if (event.key === 'Enter') {
-                generateMusic();
-            }
-        });
     </script>
 </body>
 </html>

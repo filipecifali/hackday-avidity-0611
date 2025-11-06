@@ -86,101 +86,207 @@
     </div>
 
     <script>
-        // Music generation variables
-        let melodySynth = null;
-        let padSynth = null;
-        let bassSynth = null;
-        let melodyPart = null;
-        let chordPart = null;
-        let bassPart = null;
+        // Music generation variables - Hybrid System
+        let audioPlayers = {
+            drums: null,
+            bass: null,
+            chords: null,
+            melody: null,
+            pads: null
+        };
+        let synthesizers = {
+            melody: null,
+            pads: null,
+            bass: null
+        };
+        let synthParts = {
+            melody: null,
+            chords: null,
+            bass: null
+        };
         let reverb = null;
+        let filter = null;
         let isPlaying = false;
+        let useSynthFallback = false;
 
         // Mood to musical parameter mapping
         const moodMappings = {
             happy: {
                 tempo: 120,
-                scale: ['C4', 'D4', 'E4', 'G4', 'A4', 'C5', 'D5', 'E5'], // Major pentatonic
+                // Audio stem files
+                stems: {
+                    drums: 'audio/stems/drums/happy_drums_01.mp3',
+                    bass: 'audio/stems/bass/happy_bass_01.mp3',
+                    chords: 'audio/stems/chords/happy_chords_01.mp3',
+                    melody: 'audio/stems/melody/happy_melody_01.mp3',
+                    pads: 'audio/stems/pads/happy_pads_01.mp3'
+                },
+                // Stem mixing levels (0-1)
+                stemLevels: {
+                    drums: 0.8,
+                    bass: 0.7,
+                    chords: 0.6,
+                    melody: 0.9,
+                    pads: 0.4
+                },
+                // Fallback synthesis parameters
+                scale: ['C4', 'D4', 'E4', 'G4', 'A4', 'C5', 'D5', 'E5'],
                 chords: [
-                    ['C3', 'E3', 'G3'], // C major
-                    ['G3', 'B3', 'D4'], // G major
-                    ['A3', 'C4', 'E4'], // A minor
-                    ['F3', 'A3', 'C4']  // F major
+                    ['C3', 'E3', 'G3'],
+                    ['G3', 'B3', 'D4'],
+                    ['A3', 'C4', 'E4'],
+                    ['F3', 'A3', 'C4']
                 ],
                 bassNotes: ['C2', 'G2', 'A2', 'F2'],
                 melodyPattern: [0, 2, 4, 2, 5, 4, 2, 0],
                 rhythmDensity: 'medium',
-                reverbAmount: 0.3
+                reverbAmount: 0.3,
+                filterFreq: 2000
             },
             energetic: {
                 tempo: 140,
-                scale: ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5'], // C major
+                stems: {
+                    drums: 'audio/stems/drums/energetic_drums_01.mp3',
+                    bass: 'audio/stems/bass/energetic_bass_01.mp3',
+                    chords: 'audio/stems/chords/energetic_chords_01.mp3',
+                    melody: 'audio/stems/melody/energetic_melody_01.mp3',
+                    pads: 'audio/stems/pads/energetic_pads_01.mp3'
+                },
+                stemLevels: {
+                    drums: 1.0,
+                    bass: 0.8,
+                    chords: 0.7,
+                    melody: 0.9,
+                    pads: 0.3
+                },
+                scale: ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5'],
                 chords: [
-                    ['C3', 'E3', 'G3', 'B3'], // Cmaj7
-                    ['D3', 'F3', 'A3', 'C4'], // Dm7
-                    ['G3', 'B3', 'D4', 'F4'], // G7
-                    ['C3', 'E3', 'G3', 'B3']  // Cmaj7
+                    ['C3', 'E3', 'G3', 'B3'],
+                    ['D3', 'F3', 'A3', 'C4'],
+                    ['G3', 'B3', 'D4', 'F4'],
+                    ['C3', 'E3', 'G3', 'B3']
                 ],
                 bassNotes: ['C2', 'D2', 'G2', 'C2'],
                 melodyPattern: [0, 4, 7, 4, 6, 5, 4, 2],
                 rhythmDensity: 'high',
-                reverbAmount: 0.2
+                reverbAmount: 0.2,
+                filterFreq: 3000
             },
             calm: {
                 tempo: 70,
-                scale: ['C4', 'D4', 'E4', 'G4', 'A4', 'C5'], // Pentatonic
+                stems: {
+                    drums: 'audio/stems/drums/calm_drums_01.mp3',
+                    bass: 'audio/stems/bass/calm_bass_01.mp3',
+                    chords: 'audio/stems/chords/calm_chords_01.mp3',
+                    melody: 'audio/stems/melody/calm_melody_01.mp3',
+                    pads: 'audio/stems/pads/calm_pads_01.mp3'
+                },
+                stemLevels: {
+                    drums: 0.3,
+                    bass: 0.5,
+                    chords: 0.6,
+                    melody: 0.7,
+                    pads: 0.7
+                },
+                scale: ['C4', 'D4', 'E4', 'G4', 'A4', 'C5'],
                 chords: [
-                    ['C3', 'E3', 'G3', 'D4'], // Cadd9
-                    ['F3', 'A3', 'C4', 'E4'], // Fmaj7
-                    ['G3', 'B3', 'D4', 'F4'], // G7
-                    ['C3', 'E3', 'G3', 'D4']  // Cadd9
+                    ['C3', 'E3', 'G3', 'D4'],
+                    ['F3', 'A3', 'C4', 'E4'],
+                    ['G3', 'B3', 'D4', 'F4'],
+                    ['C3', 'E3', 'G3', 'D4']
                 ],
                 bassNotes: ['C2', 'F2', 'G2', 'C2'],
                 melodyPattern: [0, 2, 1, 3, 2, 4, 3, 1],
                 rhythmDensity: 'low',
-                reverbAmount: 0.5
+                reverbAmount: 0.5,
+                filterFreq: 800
             },
             sad: {
                 tempo: 65,
-                scale: ['C4', 'D4', 'Eb4', 'F4', 'G4', 'Ab4', 'Bb4', 'C5'], // C minor
+                stems: {
+                    drums: 'audio/stems/drums/sad_drums_01.mp3',
+                    bass: 'audio/stems/bass/sad_bass_01.mp3',
+                    chords: 'audio/stems/chords/sad_chords_01.mp3',
+                    melody: 'audio/stems/melody/sad_melody_01.mp3',
+                    pads: 'audio/stems/pads/sad_pads_01.mp3'
+                },
+                stemLevels: {
+                    drums: 0.2,
+                    bass: 0.5,
+                    chords: 0.6,
+                    melody: 0.8,
+                    pads: 0.8
+                },
+                scale: ['C4', 'D4', 'Eb4', 'F4', 'G4', 'Ab4', 'Bb4', 'C5'],
                 chords: [
-                    ['C3', 'Eb3', 'G3'], // C minor
-                    ['Ab3', 'C4', 'Eb4'], // Ab major
-                    ['Bb3', 'D4', 'F4'], // Bb major
-                    ['G3', 'B3', 'D4']   // G major
+                    ['C3', 'Eb3', 'G3'],
+                    ['Ab3', 'C4', 'Eb4'],
+                    ['Bb3', 'D4', 'F4'],
+                    ['G3', 'B3', 'D4']
                 ],
                 bassNotes: ['C2', 'Ab2', 'Bb2', 'G2'],
                 melodyPattern: [0, 2, 1, 3, 2, 0, 5, 3],
                 rhythmDensity: 'low',
-                reverbAmount: 0.6
+                reverbAmount: 0.6,
+                filterFreq: 600
             },
             peaceful: {
                 tempo: 60,
+                stems: {
+                    drums: 'audio/stems/drums/peaceful_drums_01.mp3',
+                    bass: 'audio/stems/bass/peaceful_bass_01.mp3',
+                    chords: 'audio/stems/chords/peaceful_chords_01.mp3',
+                    melody: 'audio/stems/melody/peaceful_melody_01.mp3',
+                    pads: 'audio/stems/pads/peaceful_pads_01.mp3'
+                },
+                stemLevels: {
+                    drums: 0.1,
+                    bass: 0.4,
+                    chords: 0.5,
+                    melody: 0.6,
+                    pads: 0.9
+                },
                 scale: ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'C5'],
                 chords: [
-                    ['C3', 'E3', 'G3', 'B3'], // Cmaj7
-                    ['F3', 'A3', 'C4', 'E4'], // Fmaj7
-                    ['G3', 'B3', 'D4', 'F4'], // G7
-                    ['C3', 'E3', 'G3', 'B3']  // Cmaj7
+                    ['C3', 'E3', 'G3', 'B3'],
+                    ['F3', 'A3', 'C4', 'E4'],
+                    ['G3', 'B3', 'D4', 'F4'],
+                    ['C3', 'E3', 'G3', 'B3']
                 ],
                 bassNotes: ['C2', 'F2', 'G2', 'C2'],
                 melodyPattern: [0, 1, 2, 1, 3, 2, 1, 0],
                 rhythmDensity: 'low',
-                reverbAmount: 0.7
+                reverbAmount: 0.7,
+                filterFreq: 500
             },
             excited: {
                 tempo: 150,
+                stems: {
+                    drums: 'audio/stems/drums/excited_drums_01.mp3',
+                    bass: 'audio/stems/bass/excited_bass_01.mp3',
+                    chords: 'audio/stems/chords/excited_chords_01.mp3',
+                    melody: 'audio/stems/melody/excited_melody_01.mp3',
+                    pads: 'audio/stems/pads/excited_pads_01.mp3'
+                },
+                stemLevels: {
+                    drums: 1.0,
+                    bass: 0.9,
+                    chords: 0.7,
+                    melody: 1.0,
+                    pads: 0.4
+                },
                 scale: ['C4', 'D4', 'E4', 'F#4', 'G4', 'A4', 'B4', 'C5', 'D5'],
                 chords: [
-                    ['C3', 'E3', 'G3'], // C major
-                    ['D3', 'F#3', 'A3'], // D major
-                    ['G3', 'B3', 'D4'], // G major
-                    ['C3', 'E3', 'G3']  // C major
+                    ['C3', 'E3', 'G3'],
+                    ['D3', 'F#3', 'A3'],
+                    ['G3', 'B3', 'D4'],
+                    ['C3', 'E3', 'G3']
                 ],
                 bassNotes: ['C2', 'D2', 'G2', 'C2'],
                 melodyPattern: [0, 3, 5, 7, 8, 6, 4, 2],
                 rhythmDensity: 'high',
-                reverbAmount: 0.3
+                reverbAmount: 0.3,
+                filterFreq: 2500
             }
         };
 
@@ -227,14 +333,81 @@
             // Set tempo
             Tone.Transport.bpm.value = params.tempo;
 
-            // Create reverb effect
+            // Create effects chain
             reverb = new Tone.Reverb({
                 decay: 3,
                 wet: params.reverbAmount
             }).toDestination();
 
-            // Create melody synthesizer with reverb
-            melodySynth = new Tone.PolySynth(Tone.Synth, {
+            filter = new Tone.Filter({
+                frequency: params.filterFreq,
+                type: 'lowpass',
+                rolloff: -12
+            }).connect(reverb);
+
+            // Try to load audio stems first
+            let stemsLoaded = false;
+            try {
+                stemsLoaded = await loadAndPlayStems(params);
+            } catch (error) {
+                console.log('Stems not available, using synthesis fallback:', error.message);
+                useSynthFallback = true;
+            }
+
+            // If stems failed to load, use synthesis fallback
+            if (!stemsLoaded) {
+                await playSynthesizedMusic(params);
+            }
+
+            Tone.Transport.start();
+
+            isPlaying = true;
+            document.getElementById('playbackControls').style.display = 'block';
+            const modeText = useSynthFallback ? '(Synthesized)' : '(High Quality Stems)';
+            showStatus(`Playing music for mood: "${mood}" ${modeText} - ${params.tempo} BPM`, 'success');
+        }
+
+        async function loadAndPlayStems(params) {
+            const stemTypes = ['drums', 'bass', 'chords', 'melody', 'pads'];
+            let loadedCount = 0;
+
+            // Attempt to load all stems
+            for (const stemType of stemTypes) {
+                try {
+                    const stemPath = params.stems[stemType];
+                    const player = new Tone.Player({
+                        url: stemPath,
+                        loop: true,
+                        volume: Tone.gainToDb(params.stemLevels[stemType])
+                    }).connect(filter);
+
+                    await player.load();
+                    audioPlayers[stemType] = player;
+                    loadedCount++;
+                    console.log(`Loaded stem: ${stemType}`);
+                } catch (error) {
+                    console.warn(`Failed to load ${stemType} stem:`, error);
+                }
+            }
+
+            // If we loaded at least some stems, start playback
+            if (loadedCount > 0) {
+                // Sync all players and start them together
+                for (const stemType of stemTypes) {
+                    if (audioPlayers[stemType]) {
+                        audioPlayers[stemType].sync().start(0);
+                    }
+                }
+                useSynthFallback = false;
+                return true;
+            }
+
+            return false;
+        }
+
+        async function playSynthesizedMusic(params) {
+            // Create melody synthesizer
+            synthesizers.melody = new Tone.PolySynth(Tone.Synth, {
                 oscillator: {
                     type: 'triangle'
                 },
@@ -244,10 +417,10 @@
                     sustain: 0.4,
                     release: 1.2
                 }
-            }).connect(reverb);
+            }).connect(filter);
 
             // Create pad synthesizer for chords
-            padSynth = new Tone.PolySynth(Tone.Synth, {
+            synthesizers.pads = new Tone.PolySynth(Tone.Synth, {
                 oscillator: {
                     type: 'sine'
                 },
@@ -258,10 +431,10 @@
                     release: 2
                 },
                 volume: -8
-            }).connect(reverb);
+            }).connect(filter);
 
             // Create bass synthesizer
-            bassSynth = new Tone.MonoSynth({
+            synthesizers.bass = new Tone.MonoSynth({
                 oscillator: {
                     type: 'sine'
                 },
@@ -291,82 +464,79 @@
             }
 
             // Create melody part with varied rhythm
-            let melodyIndex = 0;
-            melodyPart = new Tone.Part((time, note) => {
+            synthParts.melody = new Tone.Part((time, note) => {
                 // Add some variation - occasionally skip notes or add rests
                 if (Math.random() > 0.2) { // 80% chance to play
-                    melodySynth.triggerAttackRelease(note, noteDuration, time);
+                    synthesizers.melody.triggerAttackRelease(note, noteDuration, time);
                 }
             }, melodySequence.map((note, i) => [i * Tone.Time(sequenceInterval).toSeconds(), note]));
-            melodyPart.loop = true;
-            melodyPart.loopEnd = melodySequence.length * Tone.Time(sequenceInterval).toSeconds();
+            synthParts.melody.loop = true;
+            synthParts.melody.loopEnd = melodySequence.length * Tone.Time(sequenceInterval).toSeconds();
 
             // Create chord progression
-            chordPart = new Tone.Part((time, chord) => {
-                padSynth.triggerAttackRelease(chord, '1n', time);
+            synthParts.chords = new Tone.Part((time, chord) => {
+                synthesizers.pads.triggerAttackRelease(chord, '1n', time);
             }, params.chords.map((chord, i) => [i * 2, chord])); // Each chord lasts 2 measures
-            chordPart.loop = true;
-            chordPart.loopEnd = params.chords.length * 2;
+            synthParts.chords.loop = true;
+            synthParts.chords.loopEnd = params.chords.length * 2;
 
             // Create bassline
-            bassPart = new Tone.Part((time, note) => {
-                bassSynth.triggerAttackRelease(note, '2n', time);
+            synthParts.bass = new Tone.Part((time, note) => {
+                synthesizers.bass.triggerAttackRelease(note, '2n', time);
             }, params.bassNotes.map((note, i) => [i * 2, note]));
-            bassPart.loop = true;
-            bassPart.loopEnd = params.bassNotes.length * 2;
+            synthParts.bass.loop = true;
+            synthParts.bass.loopEnd = params.bassNotes.length * 2;
 
             // Start all parts
-            melodyPart.start(0);
-            chordPart.start(0);
-            bassPart.start(0);
+            synthParts.melody.start(0);
+            synthParts.chords.start(0);
+            synthParts.bass.start(0);
 
-            Tone.Transport.start();
-
-            isPlaying = true;
-            document.getElementById('playbackControls').style.display = 'block';
-            showStatus(`Playing music for mood: "${mood}" (${params.tempo} BPM)`, 'success');
+            useSynthFallback = true;
         }
 
         function stopMusic() {
-            // Stop and dispose all parts
-            if (melodyPart) {
-                melodyPart.stop();
-                melodyPart.dispose();
-                melodyPart = null;
+            // Stop and dispose audio players (stems)
+            for (const stemType in audioPlayers) {
+                if (audioPlayers[stemType]) {
+                    audioPlayers[stemType].stop();
+                    audioPlayers[stemType].dispose();
+                    audioPlayers[stemType] = null;
+                }
             }
-            if (chordPart) {
-                chordPart.stop();
-                chordPart.dispose();
-                chordPart = null;
-            }
-            if (bassPart) {
-                bassPart.stop();
-                bassPart.dispose();
-                bassPart = null;
+
+            // Stop and dispose synthesizer parts
+            for (const partName in synthParts) {
+                if (synthParts[partName]) {
+                    synthParts[partName].stop();
+                    synthParts[partName].dispose();
+                    synthParts[partName] = null;
+                }
             }
 
             // Dispose all synthesizers
-            if (melodySynth) {
-                melodySynth.dispose();
-                melodySynth = null;
+            for (const synthName in synthesizers) {
+                if (synthesizers[synthName]) {
+                    synthesizers[synthName].dispose();
+                    synthesizers[synthName] = null;
+                }
             }
-            if (padSynth) {
-                padSynth.dispose();
-                padSynth = null;
-            }
-            if (bassSynth) {
-                bassSynth.dispose();
-                bassSynth = null;
-            }
+
+            // Dispose effects
             if (reverb) {
                 reverb.dispose();
                 reverb = null;
+            }
+            if (filter) {
+                filter.dispose();
+                filter = null;
             }
 
             Tone.Transport.stop();
             Tone.Transport.cancel();
 
             isPlaying = false;
+            useSynthFallback = false;
             document.getElementById('playbackControls').style.display = 'none';
             showStatus('Music stopped', 'info');
         }

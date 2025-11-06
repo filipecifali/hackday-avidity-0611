@@ -385,24 +385,26 @@
                 baseUrl: 'https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/master/samples/sgp_grand_piano/'
             }).chain(tremolo, chorus, filter);
 
-            // Brass/Saxophone (AM synthesis with slides) - LOUDER
-            synthesizers.brass = new Tone.PolySynth(Tone.AMSynth, {
-                harmonicity: 1.5,
-                oscillator: { type: 'sine' },
-                envelope: {
-                    attack: 0.08,
-                    decay: 0.3,
-                    sustain: 0.6,
-                    release: 1.2
+            // Guitar Sampler - High-quality acoustic guitar sound
+            synthesizers.guitar = new Tone.Sampler({
+                urls: {
+                    'A2': 'A2.mp3',
+                    'A4': 'A4.mp3',
+                    'B2': 'B2.mp3',
+                    'B4': 'B4.mp3',
+                    'C3': 'C3.mp3',
+                    'C5': 'C5.mp3',
+                    'D3': 'D3.mp3',
+                    'D5': 'D5.mp3',
+                    'E2': 'E2.mp3',
+                    'E4': 'E4.mp3',
+                    'F2': 'F2.mp3',
+                    'F4': 'F4.mp3',
+                    'G2': 'G2.mp3',
+                    'G4': 'G4.mp3'
                 },
-                modulation: { type: 'sawtooth' },
-                modulationEnvelope: {
-                    attack: 0.1,
-                    decay: 0.2,
-                    sustain: 0.8,
-                    release: 1.0
-                },
-                volume: 0  // Much louder!
+                release: 1,
+                baseUrl: 'https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/master/samples/guitar-acoustic/'
             }).chain(delay, compressor, filter);
 
             // Trumpet (higher, brighter brass) - LOUDER
@@ -518,7 +520,7 @@
 
             // Choose instrument based on mood - different moods get different lead instruments
             const leadInstrument = params.rhythmDensity === 'high' ? synthesizers.trumpet :
-                                   params.rhythmDensity === 'medium' ? synthesizers.brass :
+                                   params.rhythmDensity === 'medium' ? synthesizers.guitar :
                                    synthesizers.melody; // Use softer melody for calm moods
 
             // Create melody part with humanization and occasional grace notes (simulates slides/bends)

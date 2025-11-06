@@ -406,6 +406,31 @@
         }
 
         async function playSynthesizedMusic(params) {
+            // Create drum synthesizers
+            const kick = new Tone.MembraneSynth({
+                pitchDecay: 0.05,
+                octaves: 10,
+                oscillator: { type: 'sine' },
+                envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4 },
+                volume: -6
+            }).toDestination();
+
+            const snare = new Tone.NoiseSynth({
+                noise: { type: 'white' },
+                envelope: { attack: 0.001, decay: 0.2, sustain: 0, release: 0.2 },
+                volume: -10
+            }).toDestination();
+
+            const hihat = new Tone.MetalSynth({
+                frequency: 200,
+                envelope: { attack: 0.001, decay: 0.1, release: 0.05 },
+                harmonicity: 5.1,
+                modulationIndex: 32,
+                resonance: 4000,
+                octaves: 1.5,
+                volume: -15
+            }).toDestination();
+
             // Create melody synthesizer
             synthesizers.melody = new Tone.PolySynth(Tone.Synth, {
                 oscillator: {
@@ -447,6 +472,11 @@
                 volume: -2
             }).toDestination();
 
+            // Store drum synths for cleanup
+            synthesizers.kick = kick;
+            synthesizers.snare = snare;
+            synthesizers.hihat = hihat;
+
             // Generate melody sequence based on pattern
             const melodySequence = params.melodyPattern.map(index => params.scale[index]);
 
@@ -486,6 +516,62 @@
             }, params.bassNotes.map((note, i) => [i * 2, note]));
             synthParts.bass.loop = true;
             synthParts.bass.loopEnd = params.bassNotes.length * 2;
+
+            // Create drum patterns based on rhythm density
+            let kickPattern, snarePattern, hihatPattern;
+
+            if (params.rhythmDensity === 'high') {
+                // Fast, energetic drums
+                kickPattern = new Tone.Loop((time) => {
+                    kick.triggerAttackRelease('C1', '8n', time);
+                }, '4n');
+
+                snarePattern = new Tone.Loop((time) => {
+                    snare.triggerAttackRelease('8n', time);
+                }, '2n');
+
+                hihatPattern = new Tone.Loop((time) => {
+                    hihat.triggerAttackRelease('32n', time);
+                }, '8n');
+            } else if (params.rhythmDensity === 'medium') {
+                // Moderate groove
+                kickPattern = new Tone.Loop((time) => {
+                    kick.triggerAttackRelease('C1', '8n', time);
+                }, '4n');
+
+                snarePattern = new Tone.Loop((time) => {
+                    snare.triggerAttackRelease('8n', time);
+                }, '2n');
+
+                hihatPattern = new Tone.Loop((time) => {
+                    hihat.triggerAttackRelease('32n', time);
+                }, '4n');
+            } else {
+                // Slow, minimal drums
+                kickPattern = new Tone.Loop((time) => {
+                    kick.triggerAttackRelease('C1', '8n', time);
+                }, '2n');
+
+                snarePattern = new Tone.Loop((time) => {
+                    snare.triggerAttackRelease('8n', time);
+                }, '1m');
+
+                hihatPattern = new Tone.Loop((time) => {
+                    if (Math.random() > 0.3) { // Sparse hi-hats
+                        hihat.triggerAttackRelease('32n', time);
+                    }
+                }, '2n');
+            }
+
+            // Start drum patterns
+            kickPattern.start(0);
+            snarePattern.start('4n'); // Snare on beat 2 and 4
+            hihatPattern.start(0);
+
+            // Store drum patterns for cleanup
+            synthParts.kickPattern = kickPattern;
+            synthParts.snarePattern = snarePattern;
+            synthParts.hihatPattern = hihatPattern;
 
             // Start all parts
             synthParts.melody.start(0);

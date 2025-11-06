@@ -130,7 +130,7 @@
         // Mood to musical parameter mapping
         const moodMappings = {
             happy: {
-                tempo: 120,
+                tempo: 110,
                 // Fallback synthesis parameters
                 scale: ['C4', 'D4', 'E4', 'G4', 'A4', 'C5', 'D5', 'E5'],
                 chords: [
@@ -149,9 +149,9 @@
                 ],
                 bassNotes: ['C2', 'G2', 'A2', 'F2', 'C2', 'E2', 'G2', 'A2', 'F2', 'C2', 'G2', 'A2', 'F2', 'C2', 'G2', 'F2'],
                 melodyPattern: [0, 2, 4, 5, 7, 5, 4, 2, 0, 2, 4, 2, 0, 7, 5, 4, 2, 0, 2, 4, 5, 7, 8, 7, 5, 4, 2, 0, 5, 4, 2, 0],
-                rhythmDensity: 'medium',
-                reverbAmount: 0.3,
-                filterFreq: 3500
+                rhythmDensity: 'low',
+                reverbAmount: 0.4,
+                filterFreq: 1200
             },
             energetic: {
                 tempo: 140,
@@ -537,7 +537,9 @@
             // Generate random melody sequence that fits the mood
             function generateMelody(scale, density, length) {
                 const melody = [];
-                let currentIndex = Math.floor(Math.random() * 3); // Start in lower-mid range
+                let currentIndex = Math.floor(Math.random() * 4) + 1; // Start in middle of scale
+                let direction = Math.random() > 0.5 ? 1 : -1; // Start moving up or down
+                let stepsSinceChange = 0;
 
                 for (let i = 0; i < length; i++) {
                     melody.push(scale[currentIndex]);
@@ -556,14 +558,36 @@
                         else if (movement < 0.65) currentIndex += 0; // Stay same (repeat)
                         else currentIndex -= 1; // Step down
                     } else {
-                        // Slower, more peaceful movement
-                        if (movement < 0.4) currentIndex += 1; // Step up
-                        else if (movement < 0.8) currentIndex += 0; // Stay same (longer notes)
-                        else currentIndex -= 1; // Step down
+                        // Slower, more melodic movement - creates flowing lines
+                        if (movement < 0.35) {
+                            currentIndex += direction; // Continue in same direction
+                            stepsSinceChange++;
+                        } else if (movement < 0.55) {
+                            currentIndex += 0; // Stay same (but less often)
+                        } else if (movement < 0.75) {
+                            currentIndex -= direction; // Reverse direction
+                            direction *= -1;
+                            stepsSinceChange = 0;
+                        } else {
+                            // Occasional larger jump to add interest
+                            currentIndex += direction * 2;
+                            stepsSinceChange++;
+                        }
+
+                        // Change direction after too many steps in one direction
+                        if (stepsSinceChange > 3) {
+                            direction *= -1;
+                            stepsSinceChange = 0;
+                        }
                     }
 
                     // Keep within scale bounds
                     currentIndex = Math.max(0, Math.min(scale.length - 1, currentIndex));
+
+                    // If we hit bounds, reverse direction
+                    if (currentIndex === 0 || currentIndex === scale.length - 1) {
+                        direction *= -1;
+                    }
                 }
                 return melody;
             }
@@ -586,10 +610,26 @@
 
             const melodySequence = generateMelody(params.scale, params.rhythmDensity, melodyLength);
 
+            // Debug: Check synthesizers status
+            console.log('Synthesizers status:', {
+                trumpet: !!synthesizers.trumpet,
+                brass: !!synthesizers.brass,
+                melody: !!synthesizers.melody,
+                rhythmDensity: params.rhythmDensity
+            });
+
             // Choose instrument based on mood - different moods get different lead instruments
             const leadInstrument = params.rhythmDensity === 'high' ? synthesizers.trumpet :
                                    params.rhythmDensity === 'medium' ? synthesizers.brass :
                                    synthesizers.melody; // Use softer melody for calm moods
+
+            if (!leadInstrument) {
+                console.error('leadInstrument is undefined!', {
+                    rhythmDensity: params.rhythmDensity,
+                    synthesizers: Object.keys(synthesizers)
+                });
+                return; // Exit early to prevent error
+            }
 
             // Create melody part with humanization and occasional grace notes (simulates slides/bends)
             const melodyEvents = [];

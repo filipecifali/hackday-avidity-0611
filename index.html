@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mood Input</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
         body {
             font-family: sans-serif;
@@ -45,21 +46,227 @@
         button:hover {
             background-color: #0056b3;
         }
+        #playbackControls {
+            margin-top: 20px;
+            display: none;
+        }
+        #playbackControls button {
+            margin-right: 10px;
+            background-color: #28a745;
+        }
+        #playbackControls button:hover {
+            background-color: #218838;
+        }
+        #playbackControls button.stop {
+            background-color: #dc3545;
+        }
+        #playbackControls button.stop:hover {
+            background-color: #c82333;
+        }
+        .status {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            display: none;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <label for="moodInput">Current mood:</label>
-        <input type="text" id="moodInput" placeholder="e.g., Happy, Calm, Energetic">
-        <button onclick="logMood()">Submit Mood</button>
+        <input type="text" id="moodInput" placeholder="e.g., Happy, Calm, Energetic, Sad">
+        <button onclick="generateMusic()">Generate Music</button>
+
+        <div id="playbackControls">
+            <button onclick="stopMusic()" class="stop">Stop Music</button>
+        </div>
+
+        <div id="status" class="status"></div>
     </div>
 
     <script>
-        function logMood() {
-            const mood = document.getElementById('moodInput').value;
-            console.log("User's current mood:", mood);
-            alert("Mood logged to console: " + mood); // Optional: provide user feedback
+        // Music generation variables
+        let synth = null;
+        let bassline = null;
+        let pattern = null;
+        let isPlaying = false;
+
+        // Mood to musical parameter mapping
+        const moodMappings = {
+            happy: {
+                tempo: 140,
+                scale: ['C4', 'D4', 'E4', 'G4', 'A4', 'C5'], // Major pentatonic
+                rhythm: '8n',
+                bassNote: 'C2',
+                filterFreq: 2000,
+                synthType: 'triangle'
+            },
+            energetic: {
+                tempo: 160,
+                scale: ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5'], // C major
+                rhythm: '16n',
+                bassNote: 'C2',
+                filterFreq: 3000,
+                synthType: 'square'
+            },
+            calm: {
+                tempo: 80,
+                scale: ['C4', 'D4', 'F4', 'G4', 'A4', 'C5'], // Suspended scale
+                rhythm: '4n',
+                bassNote: 'C2',
+                filterFreq: 800,
+                synthType: 'sine'
+            },
+            sad: {
+                tempo: 70,
+                scale: ['C4', 'D4', 'Eb4', 'F4', 'G4', 'Ab4', 'Bb4', 'C5'], // C minor
+                rhythm: '4n',
+                bassNote: 'C2',
+                filterFreq: 600,
+                synthType: 'sine'
+            },
+            peaceful: {
+                tempo: 60,
+                scale: ['C4', 'E4', 'F4', 'G4', 'B4', 'C5'],
+                rhythm: '2n',
+                bassNote: 'C2',
+                filterFreq: 500,
+                synthType: 'sine'
+            },
+            excited: {
+                tempo: 150,
+                scale: ['C4', 'D4', 'E4', 'F#4', 'G4', 'A4', 'B4', 'C5'],
+                rhythm: '8n',
+                bassNote: 'C2',
+                filterFreq: 2500,
+                synthType: 'sawtooth'
+            }
+        };
+
+        function getMoodParameters(mood) {
+            const normalizedMood = mood.toLowerCase().trim();
+
+            // Direct match
+            if (moodMappings[normalizedMood]) {
+                return moodMappings[normalizedMood];
+            }
+
+            // Fuzzy matching for similar moods
+            for (const [key, value] of Object.entries(moodMappings)) {
+                if (normalizedMood.includes(key) || key.includes(normalizedMood)) {
+                    return value;
+                }
+            }
+
+            // Default to calm if no match
+            return moodMappings.calm;
         }
+
+        async function generateMusic() {
+            const mood = document.getElementById('moodInput').value;
+
+            if (!mood) {
+                showStatus('Please enter a mood first!', 'error');
+                return;
+            }
+
+            // Stop any existing music
+            if (isPlaying) {
+                stopMusic();
+            }
+
+            // Start Tone.js audio context
+            await Tone.start();
+            console.log('Audio context started');
+
+            // Get mood parameters
+            const params = getMoodParameters(mood);
+            console.log('Mood parameters:', params);
+
+            // Set tempo
+            Tone.Transport.bpm.value = params.tempo;
+
+            // Create synth with filter
+            synth = new Tone.PolySynth(Tone.Synth, {
+                oscillator: {
+                    type: params.synthType
+                },
+                envelope: {
+                    attack: 0.1,
+                    decay: 0.2,
+                    sustain: 0.5,
+                    release: 1
+                }
+            }).toDestination();
+
+            // Create bassline
+            bassline = new Tone.Synth({
+                oscillator: {
+                    type: 'sine'
+                },
+                envelope: {
+                    attack: 0.1,
+                    decay: 0.3,
+                    sustain: 0.4,
+                    release: 0.8
+                }
+            }).toDestination();
+
+            // Create a musical pattern
+            let index = 0;
+            pattern = new Tone.Pattern((time, note) => {
+                synth.triggerAttackRelease(note, params.rhythm, time);
+
+                // Play bass note every 4 beats
+                if (index % 4 === 0) {
+                    bassline.triggerAttackRelease(params.bassNote, '2n', time);
+                }
+                index++;
+            }, params.scale, 'upDown');
+
+            pattern.start(0);
+            Tone.Transport.start();
+
+            isPlaying = true;
+            document.getElementById('playbackControls').style.display = 'block';
+            showStatus(`Playing music for mood: "${mood}" (${params.tempo} BPM)`, 'success');
+        }
+
+        function stopMusic() {
+            if (pattern) {
+                pattern.stop();
+                pattern.dispose();
+            }
+            if (synth) {
+                synth.dispose();
+            }
+            if (bassline) {
+                bassline.dispose();
+            }
+
+            Tone.Transport.stop();
+            Tone.Transport.cancel();
+
+            isPlaying = false;
+            document.getElementById('playbackControls').style.display = 'none';
+            showStatus('Music stopped', 'info');
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.style.display = 'block';
+            statusDiv.style.backgroundColor = type === 'error' ? '#f8d7da' :
+                                             type === 'success' ? '#d4edda' : '#e9ecef';
+        }
+
+        // Allow Enter key to submit
+        document.getElementById('moodInput').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                generateMusic();
+            }
+        });
     </script>
 </body>
 </html>

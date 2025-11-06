@@ -431,46 +431,83 @@
                 volume: -15
             }).toDestination();
 
-            // Create melody synthesizer
-            synthesizers.melody = new Tone.PolySynth(Tone.Synth, {
+            // Create enhanced effects chain
+            const chorus = new Tone.Chorus(4, 2.5, 0.5).start();
+            const delay = new Tone.FeedbackDelay('8n', 0.3);
+            const compressor = new Tone.Compressor(-20, 3);
+
+            // Create melody synthesizer with FM synthesis for brass-like sound
+            synthesizers.melody = new Tone.PolySynth(Tone.FMSynth, {
+                harmonicity: 3,
+                modulationIndex: 10,
                 oscillator: {
-                    type: 'triangle'
+                    type: 'sine'
                 },
                 envelope: {
-                    attack: 0.05,
+                    attack: 0.01,
+                    decay: 0.2,
+                    sustain: 0.3,
+                    release: 1
+                },
+                modulation: {
+                    type: 'square'
+                },
+                modulationEnvelope: {
+                    attack: 0.2,
+                    decay: 0.01,
+                    sustain: 0.5,
+                    release: 0.8
+                },
+                volume: -8
+            }).chain(delay, compressor, filter);
+
+            // Create pad synthesizer with detuned oscillators for richness
+            synthesizers.pads = new Tone.PolySynth(Tone.Synth, {
+                oscillator: {
+                    type: 'sine',
+                    count: 3,
+                    spread: 30 // Detuning for thickness
+                },
+                envelope: {
+                    attack: 1.5,
+                    decay: 0.8,
+                    sustain: 0.8,
+                    release: 3
+                },
+                volume: -12
+            }).chain(chorus, filter);
+
+            // Create bass synthesizer with sub oscillator
+            synthesizers.bass = new Tone.MonoSynth({
+                oscillator: {
+                    type: 'sawtooth'
+                },
+                filter: {
+                    Q: 2,
+                    type: 'lowpass',
+                    rolloff: -24
+                },
+                envelope: {
+                    attack: 0.01,
                     decay: 0.3,
                     sustain: 0.4,
                     release: 1.2
-                }
-            }).connect(filter);
-
-            // Create pad synthesizer for chords
-            synthesizers.pads = new Tone.PolySynth(Tone.Synth, {
-                oscillator: {
-                    type: 'sine'
                 },
-                envelope: {
-                    attack: 0.8,
-                    decay: 0.5,
-                    sustain: 0.7,
-                    release: 2
+                filterEnvelope: {
+                    attack: 0.01,
+                    decay: 0.15,
+                    sustain: 0.3,
+                    release: 0.8,
+                    baseFrequency: 50,
+                    octaves: 3
                 },
-                volume: -8
-            }).connect(filter);
-
-            // Create bass synthesizer
-            synthesizers.bass = new Tone.MonoSynth({
-                oscillator: {
-                    type: 'sine'
-                },
-                envelope: {
-                    attack: 0.05,
-                    decay: 0.3,
-                    sustain: 0.4,
-                    release: 0.8
-                },
-                volume: -2
+                volume: 0
             }).toDestination();
+
+            // Store effects for cleanup
+            synthesizers.chorus = chorus;
+            synthesizers.delay = delay;
+            synthesizers.compressor = compressor;
 
             // Store drum synths for cleanup
             synthesizers.kick = kick;
@@ -493,26 +530,34 @@
                 sequenceInterval = '2n';
             }
 
-            // Create melody part with varied rhythm
+            // Create melody part with humanization (velocity and timing variations)
             synthParts.melody = new Tone.Part((time, note) => {
+                // Add timing humanization (slight swing/delay)
+                const timing = time + (Math.random() * 0.01 - 0.005);
+                // Add velocity variation
+                const velocity = 0.6 + (Math.random() * 0.4);
+
                 // Add some variation - occasionally skip notes or add rests
                 if (Math.random() > 0.2) { // 80% chance to play
-                    synthesizers.melody.triggerAttackRelease(note, noteDuration, time);
+                    synthesizers.melody.triggerAttackRelease(note, noteDuration, timing, velocity);
                 }
             }, melodySequence.map((note, i) => [i * Tone.Time(sequenceInterval).toSeconds(), note]));
             synthParts.melody.loop = true;
             synthParts.melody.loopEnd = melodySequence.length * Tone.Time(sequenceInterval).toSeconds();
 
-            // Create chord progression
+            // Create chord progression with slight variations
             synthParts.chords = new Tone.Part((time, chord) => {
-                synthesizers.pads.triggerAttackRelease(chord, '1n', time);
+                const velocity = 0.7 + (Math.random() * 0.2); // Velocity variation
+                synthesizers.pads.triggerAttackRelease(chord, '1n', time, velocity);
             }, params.chords.map((chord, i) => [i * 2, chord])); // Each chord lasts 2 measures
             synthParts.chords.loop = true;
             synthParts.chords.loopEnd = params.chords.length * 2;
 
-            // Create bassline
+            // Create bassline with groove (slight timing variations)
             synthParts.bass = new Tone.Part((time, note) => {
-                synthesizers.bass.triggerAttackRelease(note, '2n', time);
+                const timing = time + (Math.random() * 0.02 - 0.01); // Groove
+                const velocity = 0.8 + (Math.random() * 0.2);
+                synthesizers.bass.triggerAttackRelease(note, '2n', timing, velocity);
             }, params.bassNotes.map((note, i) => [i * 2, note]));
             synthParts.bass.loop = true;
             synthParts.bass.loopEnd = params.bassNotes.length * 2;

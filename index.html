@@ -385,7 +385,7 @@
                 baseUrl: 'https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/master/samples/sgp_grand_piano/'
             }).chain(tremolo, chorus, filter);
 
-            // Guitar Sampler - High-quality acoustic guitar sound
+            // Guitar Sampler - High-quality electric guitar sound
             synthesizers.guitar = new Tone.Sampler({
                 urls: {
                     'A2': 'A2.mp3',
@@ -404,7 +404,7 @@
                     'G4': 'G4.mp3'
                 },
                 release: 1,
-                baseUrl: 'https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/master/samples/guitar-acoustic/'
+                baseUrl: 'https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/master/samples/guitar-electric/'
             }).chain(delay, compressor, filter);
 
             // Trumpet (higher, brighter brass) - LOUDER

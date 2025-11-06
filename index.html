@@ -507,23 +507,30 @@
                                    params.rhythmDensity === 'medium' ? synthesizers.brass :
                                    synthesizers.melody; // Use softer melody for calm moods
 
-            // Create melody part with humanization and pitch slides
-            synthParts.melody = new Tone.Part((time, note) => {
-                const timing = time + (Math.random() * 0.01 - 0.005);
-                const velocity = 0.6 + (Math.random() * 0.4);
+            // Create melody part with humanization and grace notes (simulates slides/bends)
+            const melodyEvents = [];
+            melodySequence.forEach((note, i) => {
+                const baseTime = i * Tone.Time(sequenceInterval).toSeconds();
+                const timing = baseTime + (Math.random() * 0.01 - 0.005);
 
-                if (Math.random() > 0.2) {
-                    // Add pitch bends/slides (portamento effect)
-                    if (Math.random() > 0.6) { // 40% chance of slide
-                        const startNote = Tone.Frequency(note).transpose(-2); // Start 2 semitones below
-                        leadInstrument.triggerAttack(startNote, timing, velocity);
-                        leadInstrument.frequency.exponentialRampTo(note, 0.08, timing); // Slide up
-                        leadInstrument.triggerRelease(timing + Tone.Time(noteDuration).toSeconds());
-                    } else {
-                        leadInstrument.triggerAttackRelease(note, noteDuration, timing, velocity);
-                    }
+                // 40% chance to add a grace note (slide effect)
+                if (Math.random() > 0.6 && Math.random() > 0.2) {
+                    // Quick grace note before main note (simulates slide/bend)
+                    const graceNote = Tone.Frequency(note).transpose(-2); // 2 semitones below
+                    melodyEvents.push([timing - 0.05, { note: graceNote, isGrace: true }]);
                 }
-            }, melodySequence.map((note, i) => [i * Tone.Time(sequenceInterval).toSeconds(), note]));
+
+                // Main note (only play 80% of time for breathing room)
+                if (Math.random() > 0.2) {
+                    melodyEvents.push([timing, { note: note, isGrace: false }]);
+                }
+            });
+
+            synthParts.melody = new Tone.Part((time, noteData) => {
+                const velocity = noteData.isGrace ? 0.4 : (0.6 + Math.random() * 0.4);
+                const duration = noteData.isGrace ? '32n' : noteDuration;
+                leadInstrument.triggerAttackRelease(noteData.note, duration, time, velocity);
+            }, melodyEvents);
             synthParts.melody.loop = true;
             synthParts.melody.loopEnd = melodySequence.length * Tone.Time(sequenceInterval).toSeconds();
 

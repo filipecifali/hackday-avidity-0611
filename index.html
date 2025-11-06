@@ -347,7 +347,7 @@
             const compressor = new Tone.Compressor(-20, 3);
             const tremolo = new Tone.Tremolo(6, 0.3).start();
 
-            // Electric Piano (Rhodes-like sound)
+            // Electric Piano (Rhodes-like sound) - LOUDER
             synthesizers.electricPiano = new Tone.PolySynth(Tone.FMSynth, {
                 harmonicity: 1.5,
                 modulationIndex: 12,
@@ -365,10 +365,10 @@
                     sustain: 0.1,
                     release: 0.5
                 },
-                volume: -6
+                volume: 3  // Much louder!
             }).chain(tremolo, chorus, filter);
 
-            // Brass/Saxophone (FM synthesis with slides)
+            // Brass/Saxophone (FM synthesis with slides) - LOUDER
             synthesizers.brass = new Tone.PolySynth(Tone.FMSynth, {
                 harmonicity: 3.5,
                 modulationIndex: 20,
@@ -386,10 +386,10 @@
                     sustain: 0.8,
                     release: 1.0
                 },
-                volume: -10
+                volume: 0  // Much louder!
             }).chain(delay, compressor, filter);
 
-            // Trumpet (higher, brighter brass)
+            // Trumpet (higher, brighter brass) - LOUDER
             synthesizers.trumpet = new Tone.PolySynth(Tone.FMSynth, {
                 harmonicity: 4,
                 modulationIndex: 15,
@@ -407,7 +407,7 @@
                     sustain: 0.7,
                     release: 0.6
                 },
-                volume: -12
+                volume: 0  // Much louder!
             }).chain(delay, compressor, filter);
 
             // Keep original melody synth as backup
@@ -431,7 +431,7 @@
                 volume: -8
             }).chain(delay, compressor, filter);
 
-            // Create pad synthesizer with detuned oscillators for richness
+            // Create pad synthesizer with detuned oscillators for richness - QUIETER
             synthesizers.pads = new Tone.PolySynth(Tone.Synth, {
                 oscillator: {
                     type: 'sine',
@@ -444,10 +444,10 @@
                     sustain: 0.8,
                     release: 3
                 },
-                volume: -12
+                volume: -18  // Quieter to let other instruments shine
             }).chain(chorus, filter);
 
-            // Create bass synthesizer with sub oscillator
+            // Create bass synthesizer with sub oscillator - MODERATE
             synthesizers.bass = new Tone.MonoSynth({
                 oscillator: {
                     type: 'sawtooth'
@@ -471,7 +471,7 @@
                     baseFrequency: 50,
                     octaves: 3
                 },
-                volume: 0
+                volume: -6  // Moderate bass level
             }).toDestination();
 
             // Store effects for cleanup
@@ -507,27 +507,27 @@
                                    params.rhythmDensity === 'medium' ? synthesizers.brass :
                                    synthesizers.melody; // Use softer melody for calm moods
 
-            // Create melody part with humanization and grace notes (simulates slides/bends)
+            // Create melody part with humanization and occasional grace notes (simulates slides/bends)
             const melodyEvents = [];
             melodySequence.forEach((note, i) => {
                 const baseTime = i * Tone.Time(sequenceInterval).toSeconds();
                 const timing = baseTime + (Math.random() * 0.01 - 0.005);
 
-                // 40% chance to add a grace note (slide effect)
-                if (Math.random() > 0.6 && Math.random() > 0.2) {
+                // 15% chance to add a grace note (slide effect) - less frequent
+                if (Math.random() > 0.85) {
                     // Quick grace note before main note (simulates slide/bend)
                     const graceNote = Tone.Frequency(note).transpose(-2); // 2 semitones below
                     melodyEvents.push([timing - 0.05, { note: graceNote, isGrace: true }]);
                 }
 
-                // Main note (only play 80% of time for breathing room)
-                if (Math.random() > 0.2) {
+                // Main note - play 90% of time (more notes, less sparse)
+                if (Math.random() > 0.1) {
                     melodyEvents.push([timing, { note: note, isGrace: false }]);
                 }
             });
 
             synthParts.melody = new Tone.Part((time, noteData) => {
-                const velocity = noteData.isGrace ? 0.4 : (0.6 + Math.random() * 0.4);
+                const velocity = noteData.isGrace ? 0.3 : (0.7 + Math.random() * 0.3); // More consistent velocity
                 const duration = noteData.isGrace ? '32n' : noteDuration;
                 leadInstrument.triggerAttackRelease(noteData.note, duration, time, velocity);
             }, melodyEvents);

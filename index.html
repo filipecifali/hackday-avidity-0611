@@ -347,25 +347,25 @@
             const compressor = new Tone.Compressor(-20, 3);
             const tremolo = new Tone.Tremolo(6, 0.3).start();
 
-            // Electric Piano (Rhodes-like sound) - LOUDER
+            // Electric Piano (Rhodes-like sound) - Warmer, less metallic
             synthesizers.electricPiano = new Tone.PolySynth(Tone.FMSynth, {
-                harmonicity: 1.5,
-                modulationIndex: 12,
+                harmonicity: 1,  // Less harmonic content = warmer
+                modulationIndex: 4,  // Much lower = less bell-like, more mellow
                 oscillator: { type: 'sine' },
                 envelope: {
-                    attack: 0.01,
-                    decay: 0.4,
-                    sustain: 0.3,
-                    release: 1.5
+                    attack: 0.02,  // Slightly slower attack
+                    decay: 0.6,
+                    sustain: 0.2,
+                    release: 2
                 },
                 modulation: { type: 'sine' },
                 modulationEnvelope: {
-                    attack: 0.01,
-                    decay: 0.3,
-                    sustain: 0.1,
-                    release: 0.5
+                    attack: 0.05,
+                    decay: 0.4,
+                    sustain: 0.05,
+                    release: 0.8
                 },
-                volume: 3  // Much louder!
+                volume: -3  // Quieter
             }).chain(tremolo, chorus, filter);
 
             // Brass/Saxophone (FM synthesis with slides) - LOUDER

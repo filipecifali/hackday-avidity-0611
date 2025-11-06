@@ -114,6 +114,51 @@
             margin-top: 20px;
             display: none;
         }
+        .volume-control {
+            margin-top: 15px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+        .volume-control label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 0;
+        }
+        .volume-control input[type="range"] {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            background: linear-gradient(to right, #28a745 0%, #28a745 70%, #ddd 70%, #ddd 100%);
+            outline: none;
+            -webkit-appearance: none;
+        }
+        .volume-control input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #007bff;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .volume-control input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #007bff;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .volume-value {
+            min-width: 40px;
+            text-align: right;
+            font-weight: bold;
+            color: #007bff;
+        }
         #sectionDisplay {
             margin-top: 15px;
             padding: 10px;
@@ -128,6 +173,10 @@
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.7; }
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
         }
         #playbackControls button {
             margin-right: 10px;
@@ -204,6 +253,14 @@
             </div>
         </div>
 
+        <div class="volume-control">
+            <label>
+                🔊 Volume:
+                <input type="range" id="volumeSlider" min="0" max="100" value="70">
+                <span class="volume-value"><span id="volumeValue">70</span>%</span>
+            </label>
+        </div>
+
         <button id="generateBtn" disabled>Generate Music</button>
 
         <div id="sectionDisplay">🎵 Now Playing: <span id="currentSection">Intro</span></div>
@@ -214,9 +271,13 @@
 
         <div id="status" class="status"></div>
 
-        <div id="popeRat">
-            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Crect fill='%23ddd' width='400' height='400'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-size='60'%3E🐀👑%3C/text%3E%3C/svg%3E" alt="Pope Rat" onerror="this.style.display='none'">
-            <p>🎵 Synthetic music 🎵</p>
+        <div id="musicVibe" style="display: none; margin-top: 30px; text-align: center;">
+            <div id="vibeAnimation" style="font-size: 120px; animation: float 3s ease-in-out infinite;">
+                🎵
+            </div>
+            <p id="vibeText" style="font-size: 18px; color: #666; font-style: italic; margin-top: 10px;">
+                Vibing to the music...
+            </p>
         </div>
     </div>
 
@@ -235,11 +296,22 @@
         let reverb = null;
         let filter = null;
         let isPlaying = false;
+        let masterVolume = null;
 
         // User selection
         let selectedMode = 'synthetic'; // Default to synthetic
         let selectedStyle = null;
         let selectedMood = null;
+
+        // Whimsical vibe emojis for different mood combinations
+        const vibeEmojis = {
+            happy: '🌈✨',
+            sad: '🌧️💭',
+            calm: '🌊☁️',
+            energetic: '⚡🔥',
+            peaceful: '🕊️🌸',
+            excited: '🎉🎊'
+        };
 
         // Style parameter mappings - define musical characteristics for each genre
         const styleMappings = {
@@ -257,7 +329,7 @@
                 distortion: 0,
                 drumsPattern: 'swing',
                 bassType: 'walking',
-                leadSynth: 'brass', // Saxophone-like
+                leadSynth: 'electricPiano', // Saxophone-like
                 chordVoicing: 'extended', // 7ths, 9ths
                 tempoMultiplier: 0.9
             },
@@ -707,6 +779,11 @@
             await Tone.start();
             console.log('Audio context started');
 
+            // Create master volume control
+            const volumeSlider = document.getElementById('volumeSlider');
+            const volumeDb = (parseFloat(volumeSlider.value) / 100) * 10 - 10; // Convert 0-100 to -10dB to 0dB
+            masterVolume = new Tone.Volume(volumeDb).toDestination();
+
             // Get combined style + mood parameters
             const params = getCombinedParameters(selectedStyle, selectedMood);
             console.log('Combined parameters:', params);
@@ -714,11 +791,11 @@
             // Set tempo (mood tempo adjusted by style multiplier)
             Tone.Transport.bpm.value = params.tempo;
 
-            // Create effects chain
+            // Create effects chain connected to master volume
             reverb = new Tone.Reverb({
                 decay: 3,
                 wet: params.reverbAmount
-            }).toDestination();
+            }).connect(masterVolume);
 
             filter = new Tone.Filter({
                 frequency: params.filterFreq,
@@ -733,26 +810,40 @@
             isPlaying = true;
             document.getElementById('playbackControls').style.display = 'block';
             document.getElementById('sectionDisplay').style.display = 'block';
-            document.getElementById('popeRat').style.display = 'block';
+
+            // Show whimsical vibe animation
+            const vibeEmoji = vibeEmojis[selectedMood] || '🎵✨';
+            const vibeTexts = {
+                happy: 'Spreading joy and sunshine! ☀️',
+                sad: 'Feeling the melancholy vibes... 🌙',
+                calm: 'Drifting peacefully... 💫',
+                energetic: 'Pumping up the energy! 💪',
+                peaceful: 'Finding inner peace... 🧘',
+                excited: 'Let\'s celebrate! 🎈'
+            };
+            document.getElementById('vibeAnimation').textContent = vibeEmoji;
+            document.getElementById('vibeText').textContent = vibeTexts[selectedMood] || 'Vibing to the music...';
+            document.getElementById('musicVibe').style.display = 'block';
+
             const modeLabel = selectedMode === 'organic' ? 'ORGANIC' : 'SYNTHETIC';
             showStatus(`Playing ${modeLabel} ${selectedStyle.toUpperCase()} ${selectedMood} music - ${params.tempo} BPM`, 'success');
         }
 
         async function playSynthesizedMusic(params) {
-            // Create drum synthesizers
+            // Create drum synthesizers - connect to master volume
             const kick = new Tone.MembraneSynth({
                 pitchDecay: 0.05,
                 octaves: 10,
                 oscillator: { type: 'sine' },
                 envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4 },
                 volume: -6
-            }).toDestination();
+            }).connect(masterVolume);
 
             const snare = new Tone.NoiseSynth({
                 noise: { type: 'white' },
                 envelope: { attack: 0.001, decay: 0.2, sustain: 0, release: 0.2 },
                 volume: -10
-            }).toDestination();
+            }).connect(masterVolume);
 
             const hihat = new Tone.MetalSynth({
                 frequency: 200,
@@ -762,14 +853,14 @@
                 resonance: 4000,
                 octaves: 1.5,
                 volume: -15
-            }).toDestination();
+            }).connect(masterVolume);
 
             // Add shaker for texture
             const shaker = new Tone.NoiseSynth({
                 noise: { type: 'pink' },
                 envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.05 },
                 volume: -20
-            }).toDestination();
+            }).connect(masterVolume);
 
             // Create enhanced effects chain
             const chorus = new Tone.Chorus(4, 2.5, 0.5).start();
@@ -1294,8 +1385,14 @@
             isPlaying = false;
             document.getElementById('playbackControls').style.display = 'none';
             document.getElementById('sectionDisplay').style.display = 'none';
-            document.getElementById('popeRat').style.display = 'none';
+            document.getElementById('musicVibe').style.display = 'none';
             showStatus('Music stopped', 'info');
+
+            // Dispose master volume
+            if (masterVolume) {
+                masterVolume.dispose();
+                masterVolume = null;
+            }
         }
 
         function showStatus(message, type) {
@@ -1353,6 +1450,25 @@
                 generateBtn.textContent = 'Generate Music';
             }
         }
+
+        // Volume slider event listener
+        const volumeSlider = document.getElementById('volumeSlider');
+        const volumeValue = document.getElementById('volumeValue');
+
+        volumeSlider.addEventListener('input', function() {
+            const volume = this.value;
+            volumeValue.textContent = volume;
+
+            // Update slider gradient
+            const percentage = volume;
+            this.style.background = `linear-gradient(to right, #28a745 0%, #28a745 ${percentage}%, #ddd ${percentage}%, #ddd 100%)`;
+
+            // Update master volume if playing
+            if (masterVolume) {
+                const volumeDb = (parseFloat(volume) / 100) * 10 - 10; // Convert 0-100 to -10dB to 0dB
+                masterVolume.volume.value = volumeDb;
+            }
+        });
 
         // Event listeners
         document.getElementById('generateBtn').addEventListener('click', generateMusic);

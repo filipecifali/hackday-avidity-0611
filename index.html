@@ -87,60 +87,100 @@
 
     <script>
         // Music generation variables
-        let synth = null;
-        let bassline = null;
-        let pattern = null;
+        let melodySynth = null;
+        let padSynth = null;
+        let bassSynth = null;
+        let melodyPart = null;
+        let chordPart = null;
+        let bassPart = null;
+        let reverb = null;
         let isPlaying = false;
 
         // Mood to musical parameter mapping
         const moodMappings = {
             happy: {
-                tempo: 140,
-                scale: ['C4', 'D4', 'E4', 'G4', 'A4', 'C5'], // Major pentatonic
-                rhythm: '8n',
-                bassNote: 'C2',
-                filterFreq: 2000,
-                synthType: 'triangle'
+                tempo: 120,
+                scale: ['C4', 'D4', 'E4', 'G4', 'A4', 'C5', 'D5', 'E5'], // Major pentatonic
+                chords: [
+                    ['C3', 'E3', 'G3'], // C major
+                    ['G3', 'B3', 'D4'], // G major
+                    ['A3', 'C4', 'E4'], // A minor
+                    ['F3', 'A3', 'C4']  // F major
+                ],
+                bassNotes: ['C2', 'G2', 'A2', 'F2'],
+                melodyPattern: [0, 2, 4, 2, 5, 4, 2, 0],
+                rhythmDensity: 'medium',
+                reverbAmount: 0.3
             },
             energetic: {
-                tempo: 160,
+                tempo: 140,
                 scale: ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5'], // C major
-                rhythm: '16n',
-                bassNote: 'C2',
-                filterFreq: 3000,
-                synthType: 'square'
+                chords: [
+                    ['C3', 'E3', 'G3', 'B3'], // Cmaj7
+                    ['D3', 'F3', 'A3', 'C4'], // Dm7
+                    ['G3', 'B3', 'D4', 'F4'], // G7
+                    ['C3', 'E3', 'G3', 'B3']  // Cmaj7
+                ],
+                bassNotes: ['C2', 'D2', 'G2', 'C2'],
+                melodyPattern: [0, 4, 7, 4, 6, 5, 4, 2],
+                rhythmDensity: 'high',
+                reverbAmount: 0.2
             },
             calm: {
-                tempo: 80,
-                scale: ['C4', 'D4', 'F4', 'G4', 'A4', 'C5'], // Suspended scale
-                rhythm: '4n',
-                bassNote: 'C2',
-                filterFreq: 800,
-                synthType: 'sine'
+                tempo: 70,
+                scale: ['C4', 'D4', 'E4', 'G4', 'A4', 'C5'], // Pentatonic
+                chords: [
+                    ['C3', 'E3', 'G3', 'D4'], // Cadd9
+                    ['F3', 'A3', 'C4', 'E4'], // Fmaj7
+                    ['G3', 'B3', 'D4', 'F4'], // G7
+                    ['C3', 'E3', 'G3', 'D4']  // Cadd9
+                ],
+                bassNotes: ['C2', 'F2', 'G2', 'C2'],
+                melodyPattern: [0, 2, 1, 3, 2, 4, 3, 1],
+                rhythmDensity: 'low',
+                reverbAmount: 0.5
             },
             sad: {
-                tempo: 70,
+                tempo: 65,
                 scale: ['C4', 'D4', 'Eb4', 'F4', 'G4', 'Ab4', 'Bb4', 'C5'], // C minor
-                rhythm: '4n',
-                bassNote: 'C2',
-                filterFreq: 600,
-                synthType: 'sine'
+                chords: [
+                    ['C3', 'Eb3', 'G3'], // C minor
+                    ['Ab3', 'C4', 'Eb4'], // Ab major
+                    ['Bb3', 'D4', 'F4'], // Bb major
+                    ['G3', 'B3', 'D4']   // G major
+                ],
+                bassNotes: ['C2', 'Ab2', 'Bb2', 'G2'],
+                melodyPattern: [0, 2, 1, 3, 2, 0, 5, 3],
+                rhythmDensity: 'low',
+                reverbAmount: 0.6
             },
             peaceful: {
                 tempo: 60,
-                scale: ['C4', 'E4', 'F4', 'G4', 'B4', 'C5'],
-                rhythm: '2n',
-                bassNote: 'C2',
-                filterFreq: 500,
-                synthType: 'sine'
+                scale: ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'C5'],
+                chords: [
+                    ['C3', 'E3', 'G3', 'B3'], // Cmaj7
+                    ['F3', 'A3', 'C4', 'E4'], // Fmaj7
+                    ['G3', 'B3', 'D4', 'F4'], // G7
+                    ['C3', 'E3', 'G3', 'B3']  // Cmaj7
+                ],
+                bassNotes: ['C2', 'F2', 'G2', 'C2'],
+                melodyPattern: [0, 1, 2, 1, 3, 2, 1, 0],
+                rhythmDensity: 'low',
+                reverbAmount: 0.7
             },
             excited: {
                 tempo: 150,
-                scale: ['C4', 'D4', 'E4', 'F#4', 'G4', 'A4', 'B4', 'C5'],
-                rhythm: '8n',
-                bassNote: 'C2',
-                filterFreq: 2500,
-                synthType: 'sawtooth'
+                scale: ['C4', 'D4', 'E4', 'F#4', 'G4', 'A4', 'B4', 'C5', 'D5'],
+                chords: [
+                    ['C3', 'E3', 'G3'], // C major
+                    ['D3', 'F#3', 'A3'], // D major
+                    ['G3', 'B3', 'D4'], // G major
+                    ['C3', 'E3', 'G3']  // C major
+                ],
+                bassNotes: ['C2', 'D2', 'G2', 'C2'],
+                melodyPattern: [0, 3, 5, 7, 8, 6, 4, 2],
+                rhythmDensity: 'high',
+                reverbAmount: 0.3
             }
         };
 
@@ -187,45 +227,99 @@
             // Set tempo
             Tone.Transport.bpm.value = params.tempo;
 
-            // Create synth with filter
-            synth = new Tone.PolySynth(Tone.Synth, {
-                oscillator: {
-                    type: params.synthType
-                },
-                envelope: {
-                    attack: 0.1,
-                    decay: 0.2,
-                    sustain: 0.5,
-                    release: 1
-                }
+            // Create reverb effect
+            reverb = new Tone.Reverb({
+                decay: 3,
+                wet: params.reverbAmount
             }).toDestination();
 
-            // Create bassline
-            bassline = new Tone.Synth({
+            // Create melody synthesizer with reverb
+            melodySynth = new Tone.PolySynth(Tone.Synth, {
+                oscillator: {
+                    type: 'triangle'
+                },
+                envelope: {
+                    attack: 0.05,
+                    decay: 0.3,
+                    sustain: 0.4,
+                    release: 1.2
+                }
+            }).connect(reverb);
+
+            // Create pad synthesizer for chords
+            padSynth = new Tone.PolySynth(Tone.Synth, {
                 oscillator: {
                     type: 'sine'
                 },
                 envelope: {
-                    attack: 0.1,
+                    attack: 0.8,
+                    decay: 0.5,
+                    sustain: 0.7,
+                    release: 2
+                },
+                volume: -8
+            }).connect(reverb);
+
+            // Create bass synthesizer
+            bassSynth = new Tone.MonoSynth({
+                oscillator: {
+                    type: 'sine'
+                },
+                envelope: {
+                    attack: 0.05,
                     decay: 0.3,
                     sustain: 0.4,
                     release: 0.8
-                }
+                },
+                volume: -2
             }).toDestination();
 
-            // Create a musical pattern
-            let index = 0;
-            pattern = new Tone.Pattern((time, note) => {
-                synth.triggerAttackRelease(note, params.rhythm, time);
+            // Generate melody sequence based on pattern
+            const melodySequence = params.melodyPattern.map(index => params.scale[index]);
 
-                // Play bass note every 4 beats
-                if (index % 4 === 0) {
-                    bassline.triggerAttackRelease(params.bassNote, '2n', time);
+            // Determine note durations based on rhythm density
+            let noteDuration, sequenceInterval;
+            if (params.rhythmDensity === 'high') {
+                noteDuration = '8n';
+                sequenceInterval = '8n';
+            } else if (params.rhythmDensity === 'medium') {
+                noteDuration = '4n';
+                sequenceInterval = '4n';
+            } else {
+                noteDuration = '2n';
+                sequenceInterval = '2n';
+            }
+
+            // Create melody part with varied rhythm
+            let melodyIndex = 0;
+            melodyPart = new Tone.Part((time, note) => {
+                // Add some variation - occasionally skip notes or add rests
+                if (Math.random() > 0.2) { // 80% chance to play
+                    melodySynth.triggerAttackRelease(note, noteDuration, time);
                 }
-                index++;
-            }, params.scale, 'upDown');
+            }, melodySequence.map((note, i) => [i * Tone.Time(sequenceInterval).toSeconds(), note]));
+            melodyPart.loop = true;
+            melodyPart.loopEnd = melodySequence.length * Tone.Time(sequenceInterval).toSeconds();
 
-            pattern.start(0);
+            // Create chord progression
+            chordPart = new Tone.Part((time, chord) => {
+                padSynth.triggerAttackRelease(chord, '1n', time);
+            }, params.chords.map((chord, i) => [i * 2, chord])); // Each chord lasts 2 measures
+            chordPart.loop = true;
+            chordPart.loopEnd = params.chords.length * 2;
+
+            // Create bassline
+            bassPart = new Tone.Part((time, note) => {
+                bassSynth.triggerAttackRelease(note, '2n', time);
+            }, params.bassNotes.map((note, i) => [i * 2, note]));
+            bassPart.loop = true;
+            bassPart.loopEnd = params.bassNotes.length * 2;
+
+            // Start all parts
+            melodyPart.start(0);
+            chordPart.start(0);
+            bassPart.start(0);
+
             Tone.Transport.start();
 
             isPlaying = true;
@@ -234,15 +328,39 @@
         }
 
         function stopMusic() {
-            if (pattern) {
-                pattern.stop();
-                pattern.dispose();
+            // Stop and dispose all parts
+            if (melodyPart) {
+                melodyPart.stop();
+                melodyPart.dispose();
+                melodyPart = null;
             }
-            if (synth) {
-                synth.dispose();
+            if (chordPart) {
+                chordPart.stop();
+                chordPart.dispose();
+                chordPart = null;
             }
-            if (bassline) {
-                bassline.dispose();
+            if (bassPart) {
+                bassPart.stop();
+                bassPart.dispose();
+                bassPart = null;
+            }
+
+            // Dispose all synthesizers
+            if (melodySynth) {
+                melodySynth.dispose();
+                melodySynth = null;
+            }
+            if (padSynth) {
+                padSynth.dispose();
+                padSynth = null;
+            }
+            if (bassSynth) {
+                bassSynth.dispose();
+                bassSynth = null;
+            }
+            if (reverb) {
+                reverb.dispose();
+                reverb = null;
             }
 
             Tone.Transport.stop();

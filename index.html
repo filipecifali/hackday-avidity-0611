@@ -43,6 +43,25 @@
             margin-bottom: 10px;
             color: #333;
         }
+        .mode-toggle {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .mode-toggle button {
+            flex: 1;
+            padding: 10px;
+            background-color: #e9ecef;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .mode-toggle button.active {
+            background-color: #28a745;
+            color: white;
+            border-color: #218838;
+        }
         .button-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -156,6 +175,14 @@
 <body>
     <div class="container">
         <div class="selection-section">
+            <h3>Sound Mode:</h3>
+            <div class="mode-toggle">
+                <button class="mode-btn active" data-mode="synthetic">🎹 Synthetic</button>
+                <button class="mode-btn" data-mode="organic">🎸 Organic (Real Instruments)</button>
+            </div>
+        </div>
+
+        <div class="selection-section">
             <h3>Choose a Style:</h3>
             <div class="button-grid">
                 <button class="preset-btn style-btn" data-style="rock">🎸 Rock</button>
@@ -210,6 +237,7 @@
         let isPlaying = false;
 
         // User selection
+        let selectedMode = 'synthetic'; // Default to synthetic
         let selectedStyle = null;
         let selectedMood = null;
 
@@ -220,7 +248,7 @@
                 distortion: 0.8,
                 drumsPattern: 'fourOnFloor',
                 bassType: 'driving',
-                leadSynth: 'trumpet', // Aggressive, electric guitar-like
+                leadSynth: 'electricPiano', // Changed from trumpet - more guitar-like
                 chordVoicing: 'power', // Power chords (root + fifth)
                 tempoMultiplier: 1.1
             },
@@ -442,6 +470,7 @@
                 distortion: styleParams.distortion,
                 style: style,
                 mood: mood,
+                mode: selectedMode, // Include organic/synthetic mode
                 chords: chords,
                 bassNotes: bassNotes,
                 scale: scale, // Use generated scale instead of hardcoded
@@ -705,7 +734,8 @@
             document.getElementById('playbackControls').style.display = 'block';
             document.getElementById('sectionDisplay').style.display = 'block';
             document.getElementById('popeRat').style.display = 'block';
-            showStatus(`Playing ${selectedStyle.toUpperCase()} ${selectedMood} music - ${params.tempo} BPM - ${params.structure.length} sections`, 'success');
+            const modeLabel = selectedMode === 'organic' ? 'ORGANIC' : 'SYNTHETIC';
+            showStatus(`Playing ${modeLabel} ${selectedStyle.toUpperCase()} ${selectedMood} music - ${params.tempo} BPM`, 'success');
         }
 
         async function playSynthesizedMusic(params) {
@@ -747,8 +777,77 @@
             const compressor = new Tone.Compressor(-20, 3);
             const tremolo = new Tone.Tremolo(6, 0.3).start();
 
-            // Electric Piano (Rhodes-like sound) - Warmer, less metallic
-            synthesizers.electricPiano = new Tone.PolySynth(Tone.FMSynth, {
+            const isOrganic = params.mode === 'organic';
+
+            if (isOrganic) {
+                // ORGANIC MODE: More realistic, natural instrument sounds
+                console.log('Creating ORGANIC instruments');
+
+                // Acoustic Piano - Warmer, longer release
+                synthesizers.electricPiano = new Tone.PolySynth(Tone.Synth, {
+                    oscillator: { type: 'triangle' },
+                    envelope: {
+                        attack: 0.005,
+                        decay: 0.3,
+                        sustain: 0.1,
+                        release: 3 // Long natural release
+                    },
+                    volume: -8
+                }).chain(chorus, filter);
+
+                // Real Brass - More breath, articulation
+                // COMMENTED OUT TEMPORARILY - TESTING
+                /*synthesizers.brass = new Tone.PolySynth(Tone.FMSynth, {
+                    harmonicity: 2.8,
+                    modulationIndex: 12,
+                    oscillator: { type: 'sine' },
+                    envelope: {
+                        attack: 0.15, // Slower attack like real brass
+                        decay: 0.4,
+                        sustain: 0.7,
+                        release: 1.5
+                    },
+                    modulation: { type: 'sine' },
+                    modulationEnvelope: {
+                        attack: 0.2,
+                        decay: 0.3,
+                        sustain: 0.6,
+                        release: 1.2
+                    },
+                    volume: -2
+                }).chain(delay, compressor, filter);*/
+                synthesizers.brass = synthesizers.melody; // Use melody as fallback
+
+                // Organic Lead - String-like
+                synthesizers.trumpet = new Tone.PolySynth(Tone.Synth, {
+                    oscillator: { type: 'sawtooth' },
+                    envelope: {
+                        attack: 0.08,
+                        decay: 0.2,
+                        sustain: 0.5,
+                        release: 1.2
+                    },
+                    volume: -4
+                }).chain(delay, filter);
+
+                // Warm Pad/Strings
+                synthesizers.melody = new Tone.PolySynth(Tone.Synth, {
+                    oscillator: { type: 'sine' },
+                    envelope: {
+                        attack: 0.3, // Very slow attack
+                        decay: 0.5,
+                        sustain: 0.8,
+                        release: 2.5
+                    },
+                    volume: -6
+                }).chain(chorus, filter);
+
+            } else {
+                // SYNTHETIC MODE: Original electronic sounds
+                console.log('Creating SYNTHETIC instruments');
+
+                // Electric Piano (Rhodes-like sound) - Warmer, less metallic
+                synthesizers.electricPiano = new Tone.PolySynth(Tone.FMSynth, {
                 harmonicity: 1,
                 modulationIndex: 4,
                 oscillator: { type: 'sine' },
@@ -828,6 +927,7 @@
                 },
                 volume: -8
             }).chain(delay, compressor, filter);
+            }
 
             // Create pad synthesizer with detuned oscillators for richness - QUIETER
             synthesizers.pads = new Tone.PolySynth(Tone.Synth, {
@@ -1205,6 +1305,18 @@
             statusDiv.style.backgroundColor = type === 'error' ? '#f8d7da' :
                                              type === 'success' ? '#d4edda' : '#e9ecef';
         }
+
+        // Event listeners for mode selection
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                // Remove active class from all mode buttons
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                // Add active class to clicked button
+                this.classList.add('active');
+                selectedMode = this.dataset.mode;
+                console.log('Mode selected:', selectedMode);
+            });
+        });
 
         // Event listeners for style selection
         document.querySelectorAll('.style-btn').forEach(btn => {

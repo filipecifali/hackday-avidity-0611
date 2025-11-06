@@ -76,10 +76,10 @@
     <div class="container">
         <label for="moodInput">Current mood:</label>
         <input type="text" id="moodInput" placeholder="e.g., Happy, Calm, Energetic, Sad">
-        <button onclick="generateMusic()">Generate Music</button>
+        <button id="generateBtn">Generate Music</button>
 
         <div id="playbackControls">
-            <button onclick="stopMusic()" class="stop">Stop Music</button>
+            <button id="stopBtn" class="stop">Stop Music</button>
         </div>
 
         <div id="status" class="status"></div>
@@ -260,6 +260,10 @@
             statusDiv.style.backgroundColor = type === 'error' ? '#f8d7da' :
                                              type === 'success' ? '#d4edda' : '#e9ecef';
         }
+
+        // Event listeners
+        document.getElementById('generateBtn').addEventListener('click', generateMusic);
+        document.getElementById('stopBtn').addEventListener('click', stopMusic);
 
         // Allow Enter key to submit
         document.getElementById('moodInput').addEventListener('keypress', function(event) {

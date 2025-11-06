@@ -70,6 +70,27 @@
             border-radius: 4px;
             display: none;
         }
+        #popeRat {
+            margin-top: 30px;
+            display: none;
+            text-align: center;
+        }
+        #popeRat img {
+            max-width: 400px;
+            width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        #popeRat p {
+            margin-top: 10px;
+            font-style: italic;
+            color: #666;
+        }
     </style>
 </head>
 <body>
@@ -83,6 +104,11 @@
         </div>
 
         <div id="status" class="status"></div>
+
+        <div id="popeRat">
+            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Crect fill='%23ddd' width='400' height='400'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-size='60'%3E🐀👑%3C/text%3E%3C/svg%3E" alt="Pope Rat" onerror="this.style.display='none'">
+            <p>🎵 Synthetic music, blessed by His Holiness 🎵</p>
+        </div>
     </div>
 
     <script>
@@ -328,6 +354,7 @@
 
             isPlaying = true;
             document.getElementById('playbackControls').style.display = 'block';
+            document.getElementById('popeRat').style.display = 'block';
             showStatus(`Playing music for mood: "${mood}" (Synthesized) - ${params.tempo} BPM`, 'success');
         }
 
@@ -370,64 +397,46 @@
             const compressor = new Tone.Compressor(-20, 3);
             const tremolo = new Tone.Tremolo(6, 0.3).start();
 
-            // Piano Sampler - High-quality piano sound
-            synthesizers.piano = new Tone.Sampler({
-                urls: {
-                    'A0': 'A0.mp3',
-                    'C1': 'C1.mp3',
-                    'D#1': 'Ds1.mp3',
-                    'F#1': 'Fs1.mp3',
-                    'A1': 'A1.mp3',
-                    'C2': 'C2.mp3',
-                    'D#2': 'Ds2.mp3',
-                    'F#2': 'Fs2.mp3',
-                    'A2': 'A2.mp3',
-                    'C3': 'C3.mp3',
-                    'D#3': 'Ds3.mp3',
-                    'F#3': 'Fs3.mp3',
-                    'A3': 'A3.mp3',
-                    'C4': 'C4.mp3',
-                    'D#4': 'Ds4.mp3',
-                    'F#4': 'Fs4.mp3',
-                    'A4': 'A4.mp3',
-                    'C5': 'C5.mp3',
-                    'D#5': 'Ds5.mp3',
-                    'F#5': 'Fs5.mp3',
-                    'A5': 'A5.mp3',
-                    'C6': 'C6.mp3',
-                    'D#6': 'Ds6.mp3',
-                    'F#6': 'Fs6.mp3',
-                    'A6': 'A6.mp3',
-                    'C7': 'C7.mp3',
-                    'D#7': 'Ds7.mp3',
-                    'F#7': 'Fs7.mp3',
-                    'A7': 'A7.mp3',
-                    'C8': 'C8.mp3'
+            // Electric Piano (Rhodes-like sound) - Warmer, less metallic
+            synthesizers.electricPiano = new Tone.PolySynth(Tone.FMSynth, {
+                harmonicity: 1,
+                modulationIndex: 4,
+                oscillator: { type: 'sine' },
+                envelope: {
+                    attack: 0.02,
+                    decay: 0.6,
+                    sustain: 0.2,
+                    release: 2
                 },
-                release: 1,
-                baseUrl: 'https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/master/samples/sgp_grand_piano/'
+                modulation: { type: 'sine' },
+                modulationEnvelope: {
+                    attack: 0.05,
+                    decay: 0.4,
+                    sustain: 0.05,
+                    release: 0.8
+                },
+                volume: -3
             }).chain(tremolo, chorus, filter);
 
-            // Guitar Sampler - High-quality electric guitar sound
-            synthesizers.guitar = new Tone.Sampler({
-                urls: {
-                    'A2': 'A2.mp3',
-                    'A4': 'A4.mp3',
-                    'B2': 'B2.mp3',
-                    'B4': 'B4.mp3',
-                    'C3': 'C3.mp3',
-                    'C5': 'C5.mp3',
-                    'D3': 'D3.mp3',
-                    'D5': 'D5.mp3',
-                    'E2': 'E2.mp3',
-                    'E4': 'E4.mp3',
-                    'F2': 'F2.mp3',
-                    'F4': 'F4.mp3',
-                    'G2': 'G2.mp3',
-                    'G4': 'G4.mp3'
+            // Brass/Saxophone (FM synthesis with slides) - LOUDER
+            synthesizers.brass = new Tone.PolySynth(Tone.FMSynth, {
+                harmonicity: 3.5,
+                modulationIndex: 20,
+                oscillator: { type: 'sine' },
+                envelope: {
+                    attack: 0.08,
+                    decay: 0.3,
+                    sustain: 0.6,
+                    release: 1.2
                 },
-                release: 1,
-                baseUrl: 'https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/master/samples/guitar-electric/'
+                modulation: { type: 'sawtooth' },
+                modulationEnvelope: {
+                    attack: 0.1,
+                    decay: 0.2,
+                    sustain: 0.8,
+                    release: 1.0
+                },
+                volume: 0
             }).chain(delay, compressor, filter);
 
             // Trumpet (higher, brighter brass) - LOUDER
@@ -579,7 +588,7 @@
 
             // Choose instrument based on mood - different moods get different lead instruments
             const leadInstrument = params.rhythmDensity === 'high' ? synthesizers.trumpet :
-                                   params.rhythmDensity === 'medium' ? synthesizers.guitar :
+                                   params.rhythmDensity === 'medium' ? synthesizers.brass :
                                    synthesizers.melody; // Use softer melody for calm moods
 
             // Create melody part with humanization and occasional grace notes (simulates slides/bends)
@@ -609,8 +618,8 @@
             synthParts.melody.loop = true;
             synthParts.melody.loopEnd = melodySequence.length * Tone.Time(sequenceInterval).toSeconds();
 
-            // Use piano for chords in upbeat moods, pads for calm moods
-            const chordInstrument = params.rhythmDensity !== 'low' ? synthesizers.piano : synthesizers.pads;
+            // Use electric piano for chords in upbeat moods, pads for calm moods
+            const chordInstrument = params.rhythmDensity !== 'low' ? synthesizers.electricPiano : synthesizers.pads;
 
             // Create chord progression
             synthParts.chords = new Tone.Part((time, chord) => {
@@ -756,6 +765,7 @@
 
             isPlaying = false;
             document.getElementById('playbackControls').style.display = 'none';
+            document.getElementById('popeRat').style.display = 'none';
             showStatus('Music stopped', 'info');
         }
 

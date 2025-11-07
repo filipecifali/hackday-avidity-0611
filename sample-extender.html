@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sample-Based Music Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+        h1 {
+            margin: 0 0 10px 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+        .subtitle {
+            opacity: 0.8;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        button {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border: none;
+            padding: 20px 50px;
+            font-size: 1.3em;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            font-weight: 600;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .status {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            min-height: 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            font-size: 1.1em;
+        }
+        .status.loading {
+            background: rgba(255, 193, 7, 0.2);
+            border: 2px solid rgba(255, 193, 7, 0.5);
+        }
+        .status.success {
+            background: rgba(76, 175, 80, 0.2);
+            border: 2px solid rgba(76, 175, 80, 0.5);
+        }
+        .status.error {
+            background: rgba(244, 67, 54, 0.2);
+            border: 2px solid rgba(244, 67, 54, 0.5);
+        }
+        .controls {
+            margin-top: 20px;
+            display: none;
+        }
+        .controls.visible {
+            display: block;
+        }
+        .volume-control {
+            margin-top: 20px;
+        }
+        .volume-control input[type="range"] {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            outline: none;
+        }
+        .info {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+        .sample-info {
+            margin-top: 15px;
+            text-align: left;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            font-size: 0.95em;
+        }
+        .sample-info div {
+            margin: 5px 0;
+        }
+        .sample-info strong {
+            color: #f093fb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 Sample Extender</h1>
+        <p class="subtitle">Load a sample, generate a full track</p>
+
+        <button id="generateBtn" onclick="generateMusic()">Generate Music</button>
+
+        <div id="status" class="status">
+            Ready! Click to generate music from your samples.
+        </div>
+
+        <div id="sampleInfo" class="sample-info" style="display: none;"></div>
+
+        <div id="controls" class="controls">
+            <button onclick="stopMusic()" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                Stop Music
+            </button>
+
+            <div class="volume-control">
+                <label>🔊 Volume</label>
+                <input type="range" id="volumeSlider" min="0" max="100" value="70" oninput="updateVolume(this.value)">
+            </div>
+        </div>
+
+        <div class="info">
+            <strong>How it works:</strong><br>
+            Loads your sample → Analyzes pattern, key, tempo → Generates extended track using the same instruments and style
+        </div>
+    </div>
+
+    <script>
+        let masterVolume = null;
+        let isPlaying = false;
+        let scheduledEvents = [];
+        let instruments = {};
+        let samplePlayers = [];
+
+        async function generateMusic() {
+            if (isPlaying) {
+                showStatus('Music already playing! Stop first.', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('generateBtn');
+            btn.disabled = true;
+            showStatus('🎵 Loading samples...', 'loading');
+
+            try {
+                // Start Tone.js
+                await Tone.start();
+
+                // Load sample manifest
+                const response = await fetch('samples/manifest.json');
+                if (!response.ok) throw new Error('No samples found! Add samples to samples/ directory.');
+
+                const manifest = await response.json();
+
+                // Pick a random bass sample (or first available sample type)
+                let sample = null;
+                let sampleType = null;
+
+                if (manifest.bass && manifest.bass.length > 0) {
+                    sample = manifest.bass[Math.floor(Math.random() * manifest.bass.length)];
+                    sampleType = 'bass';
+                } else if (manifest.melody && manifest.melody.length > 0) {
+                    sample = manifest.melody[Math.floor(Math.random() * manifest.melody.length)];
+                    sampleType = 'melody';
+                } else if (manifest.drums && manifest.drums.length > 0) {
+                    sample = manifest.drums[Math.floor(Math.random() * manifest.drums.length)];
+                    sampleType = 'drums';
+                }
+
+                if (!sample) {
+                    throw new Error('No samples available in manifest!');
+                }
+
+                showStatus(`🎯 Analyzing: ${sample.file}`, 'loading');
+
+                // Display sample info
+                displaySampleInfo(sample, sampleType);
+
+                // Set tempo
+                const bpm = sample.bpm || 120;
+                Tone.Transport.bpm.value = bpm;
+
+                // Create master volume
+                masterVolume = new Tone.Volume(-10).toDestination();
+
+                // Load the sample
+                const samplePlayer = new Tone.Player({
+                    url: `samples/${sampleType}/${sample.file}`,
+                    loop: true,
+                    volume: -3
+                }).connect(masterVolume);
+
+                await Tone.loaded();
+                samplePlayers.push(samplePlayer);
+
+                showStatus('🎼 Generating extended track...', 'loading');
+
+                // Generate extended music based on sample
+                await extendSample(sample, samplePlayer, bpm);
+
+                // Start playback
+                Tone.Transport.start();
+                isPlaying = true;
+
+                showStatus(`✅ Playing! Extended to full track (${Tone.Transport.seconds}s)`, 'success');
+                document.getElementById('controls').classList.add('visible');
+
+            } catch (error) {
+                console.error('Error:', error);
+                showStatus(`❌ Error: ${error.message}`, 'error');
+                btn.disabled = false;
+            }
+        }
+
+        async function extendSample(sample, samplePlayer, bpm) {
+            // Extract sample metadata
+            const key = sample.key || 'C';
+            const mode = sample.mode || 'minor';
+            const notePattern = sample.notePattern || ['C2', 'Eb2', 'G2', 'C3'];
+            const groove = sample.groove || { swing: 0.5, slides: false };
+
+            // Build scale based on key/mode
+            const scale = buildScale(key, mode);
+
+            // Create matching instruments
+            createInstruments(sample, groove);
+
+            // Structure: intro (sample) → verse → chorus → verse → bridge → outro
+            const sections = [
+                { name: 'intro', bars: 4, useOriginal: true, intensity: 0.4 },
+                { name: 'verse1', bars: 8, useOriginal: false, intensity: 0.6 },
+                { name: 'chorus1', bars: 8, useOriginal: false, intensity: 1.0 },
+                { name: 'verse2', bars: 8, useOriginal: false, intensity: 0.7 },
+                { name: 'bridge', bars: 4, useOriginal: false, intensity: 0.8 },
+                { name: 'chorus2', bars: 8, useOriginal: false, intensity: 1.0 },
+                { name: 'outro', bars: 4, useOriginal: true, intensity: 0.3 }
+            ];
+
+            let currentTime = 0;
+            const barDuration = (60 / bpm) * 4; // 4 beats per bar
+
+            sections.forEach((section, idx) => {
+                const startTime = currentTime;
+                const duration = section.bars * barDuration;
+                const endTime = startTime + duration;
+
+                console.log(`Section: ${section.name} (${startTime.toFixed(1)}s - ${endTime.toFixed(1)}s)`);
+
+                // Start/stop original sample based on section
+                if (section.useOriginal) {
+                    scheduledEvents.push(Tone.Transport.schedule((time) => {
+                        samplePlayer.volume.linearRampTo(-3, 1, time);
+                        if (!samplePlayer.state === 'started') {
+                            samplePlayer.start(time);
+                        }
+                    }, startTime));
+                } else {
+                    scheduledEvents.push(Tone.Transport.schedule((time) => {
+                        samplePlayer.volume.linearRampTo(-15, 2, time); // Fade out
+                    }, startTime));
+                }
+
+                // Generate bass line using pattern
+                if (instruments.bass && notePattern) {
+                    generateBassSection(notePattern, startTime, duration, section.intensity, groove, idx);
+                }
+
+                // Generate drums
+                if (instruments.kick) {
+                    generateDrumSection(startTime, duration, section.intensity, bpm);
+                }
+
+                // Generate melody (higher octave of bass pattern)
+                if (instruments.melody && notePattern) {
+                    generateMelodySection(notePattern, scale, startTime, duration, section.intensity, groove);
+                }
+
+                // Chords/pads
+                if (instruments.pad) {
+                    generateChordSection(scale, startTime, duration, section.intensity);
+                }
+
+                currentTime = endTime;
+            });
+
+            console.log(`Total track: ${currentTime.toFixed(1)}s`);
+        }
+
+        function buildScale(key, mode) {
+            const rootMidi = 60 + ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'].indexOf(key);
+            const intervals = mode === 'minor' ? [0, 2, 3, 5, 7, 8, 10] : [0, 2, 4, 5, 7, 9, 11];
+
+            const scale = [];
+            for (let octave = 2; octave <= 5; octave++) {
+                intervals.forEach(interval => {
+                    const midi = rootMidi - 24 + (octave - 2) * 12 + interval;
+                    scale.push(Tone.Frequency(midi, 'midi').toNote());
+                });
+            }
+            return scale;
+        }
+
+        function createInstruments(sample, groove) {
+            // Bass synth matching sample
+            instruments.bass = new Tone.MonoSynth({
+                oscillator: { type: 'sawtooth' },
+                filter: { Q: 6, type: 'lowpass', rolloff: -24 },
+                envelope: { attack: 0.01, decay: 0.2, sustain: 0.5, release: 0.8 },
+                volume: -3
+            }).connect(masterVolume);
+
+            // Melody synth
+            instruments.melody = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { type: 'triangle' },
+                envelope: { attack: 0.01, decay: 0.1, sustain: 0.3, release: 1 },
+                volume: -8
+            }).connect(masterVolume);
+
+            // Pad
+            instruments.pad = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { type: 'sine', count: 3, spread: 20 },
+                envelope: { attack: 1, decay: 0.5, sustain: 0.8, release: 2 },
+                volume: -18
+            }).connect(masterVolume);
+
+            // Drums
+            instruments.kick = new Tone.MembraneSynth({
+                pitchDecay: 0.05, octaves: 10,
+                oscillator: { type: 'sine' },
+                envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4 },
+                volume: -3
+            }).connect(masterVolume);
+
+            instruments.snare = new Tone.NoiseSynth({
+                noise: { type: 'white' },
+                envelope: { attack: 0.005, decay: 0.1, sustain: 0 },
+                volume: -5
+            }).connect(masterVolume);
+
+            instruments.hihat = new Tone.MetalSynth({
+                frequency: 200,
+                envelope: { attack: 0.001, decay: 0.1, release: 0.01 },
+                harmonicity: 5.1, modulationIndex: 32,
+                resonance: 4000, octaves: 1.5,
+                volume: -15
+            }).connect(masterVolume);
+        }
+
+        function generateBassSection(pattern, startTime, duration, intensity, groove, sectionIdx) {
+            const swing = groove.swing || 0.5;
+            const slides = groove.slides || false;
+            const beatsPerNote = 0.5; // 8th notes
+
+            // Create variations
+            const variations = [];
+            const repeatCount = Math.ceil(duration / (pattern.length * beatsPerNote));
+
+            for (let r = 0; r < repeatCount; r++) {
+                pattern.forEach((note, i) => {
+                    if (note === 'rest') {
+                        variations.push('rest');
+                    } else {
+                        // Occasionally vary (more in later sections)
+                        const random = Math.random();
+                        if (random < 0.1 * intensity && sectionIdx > 1) {
+                            // Transpose octave
+                            try {
+                                const midi = Tone.Frequency(note).toMidi();
+                                variations.push(Tone.Frequency(midi + 12, 'midi').toNote());
+                            } catch {
+                                variations.push(note);
+                            }
+                        } else {
+                            variations.push(note);
+                        }
+                    }
+                });
+            }
+
+            // Schedule notes
+            variations.forEach((note, i) => {
+                if (note === 'rest') return;
+
+                const baseTime = i * beatsPerNote;
+                const swingOffset = (i % 2 === 1) ? swing * 0.1 : 0;
+                const noteTime = startTime + baseTime + swingOffset;
+
+                if (noteTime < startTime + duration) {
+                    scheduledEvents.push(Tone.Transport.schedule((time) => {
+                        if (slides && Math.random() > 0.7) {
+                            // Slide
+                            const fromMidi = Tone.Frequency(note).toMidi() - 1;
+                            const fromNote = Tone.Frequency(fromMidi, 'midi').toNote();
+                            instruments.bass.triggerAttack(fromNote, time);
+                            instruments.bass.frequency.linearRampTo(note, 0.05, time);
+                            instruments.bass.triggerRelease(time + 0.4);
+                        } else {
+                            instruments.bass.triggerAttackRelease(note, '8n', time, intensity * 0.9);
+                        }
+                    }, noteTime));
+                }
+            });
+        }
+
+        function generateDrumSection(startTime, duration, intensity, bpm) {
+            const kickInterval = 1; // Every beat
+            const snareInterval = 2; // Every 2 beats (backbeat)
+            const hihatInterval = intensity > 0.7 ? 0.25 : 0.5;
+
+            // Kick
+            for (let t = 0; t < duration; t += kickInterval) {
+                scheduledEvents.push(Tone.Transport.schedule((time) => {
+                    instruments.kick.triggerAttackRelease('C1', '8n', time);
+                }, startTime + t));
+            }
+
+            // Snare on 2 and 4
+            for (let t = 1; t < duration; t += snareInterval) {
+                scheduledEvents.push(Tone.Transport.schedule((time) => {
+                    instruments.snare.triggerAttackRelease('8n', time);
+                }, startTime + t));
+            }
+
+            // Hi-hats
+            for (let t = 0; t < duration; t += hihatInterval) {
+                scheduledEvents.push(Tone.Transport.schedule((time) => {
+                    instruments.hihat.triggerAttackRelease('32n', time, intensity * 0.6);
+                }, startTime + t));
+            }
+        }
+
+        function generateMelodySection(pattern, scale, startTime, duration, intensity, groove) {
+            if (intensity < 0.6) return; // Only in higher intensity sections
+
+            const melodyPattern = pattern.map(note => {
+                if (note === 'rest') return 'rest';
+                try {
+                    const midi = Tone.Frequency(note).toMidi() + 12; // Octave up
+                    return Tone.Frequency(midi, 'midi').toNote();
+                } catch {
+                    return scale[Math.floor(Math.random() * scale.length)];
+                }
+            });
+
+            melodyPattern.forEach((note, i) => {
+                if (note === 'rest' || Math.random() > intensity) return;
+
+                const noteTime = startTime + i * 0.5;
+                if (noteTime < startTime + duration) {
+                    scheduledEvents.push(Tone.Transport.schedule((time) => {
+                        instruments.melody.triggerAttackRelease(note, '8n', time, intensity * 0.7);
+                    }, noteTime));
+                }
+            });
+        }
+
+        function generateChordSection(scale, startTime, duration, intensity) {
+            if (intensity < 0.5) return;
+
+            // Build chords from scale
+            const chords = [
+                [scale[0], scale[2], scale[4]],   // i
+                [scale[3], scale[5], scale[7]],   // iv
+                [scale[4], scale[6], scale[8]],   // v
+                [scale[2], scale[4], scale[6]]    // iii
+            ];
+
+            chords.forEach((chord, i) => {
+                const chordTime = startTime + i * 4;
+                if (chordTime < startTime + duration) {
+                    scheduledEvents.push(Tone.Transport.schedule((time) => {
+                        instruments.pad.triggerAttackRelease(chord, '2n', time, intensity * 0.5);
+                    }, chordTime));
+                }
+            });
+        }
+
+        function displaySampleInfo(sample, type) {
+            const info = document.getElementById('sampleInfo');
+            info.style.display = 'block';
+            info.innerHTML = `
+                <div><strong>Sample:</strong> ${sample.file}</div>
+                <div><strong>Type:</strong> ${type}</div>
+                <div><strong>BPM:</strong> ${sample.bpm || 'Unknown'}</div>
+                <div><strong>Key:</strong> ${sample.key || 'Unknown'} ${sample.mode || ''}</div>
+                <div><strong>Style:</strong> ${sample.style || 'N/A'}</div>
+                ${sample.notePattern ? `<div><strong>Pattern:</strong> ${sample.notePattern.join(', ')}</div>` : ''}
+            `;
+        }
+
+        function stopMusic() {
+            Tone.Transport.stop();
+            Tone.Transport.cancel(0);
+
+            // Clean up scheduled events
+            scheduledEvents.forEach(event => event.dispose?.());
+            scheduledEvents = [];
+
+            // Stop and dispose players
+            samplePlayers.forEach(player => {
+                player.stop();
+                player.dispose();
+            });
+            samplePlayers = [];
+
+            // Dispose instruments
+            Object.values(instruments).forEach(inst => inst?.dispose?.());
+            instruments = {};
+
+            if (masterVolume) {
+                masterVolume.dispose();
+                masterVolume = null;
+            }
+
+            isPlaying = false;
+            document.getElementById('controls').classList.remove('visible');
+            document.getElementById('generateBtn').disabled = false;
+            showStatus('Music stopped. Ready to generate again!', 'success');
+        }
+
+        function updateVolume(value) {
+            if (masterVolume) {
+                const db = (parseFloat(value) / 100) * 10 - 10;
+                masterVolume.volume.value = db;
+            }
+        }
+
+        function showStatus(message, type = '') {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = 'status ' + type;
+        }
+    </script>
+</body>
+</html>

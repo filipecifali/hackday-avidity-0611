@@ -87,6 +87,25 @@
             color: white;
             border-color: #0056b3;
         }
+        .instrument-selector {
+            width: 100%;
+            padding: 12px 15px;
+            background-color: #fff;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 15px;
+            color: #333;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .instrument-selector:hover {
+            border-color: #007bff;
+        }
+        .instrument-selector:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
         button {
             background-color: #007bff;
             color: white;
@@ -251,6 +270,40 @@
                 <button class="preset-btn mood-btn" data-mood="peaceful">🕊️ Peaceful</button>
                 <button class="preset-btn mood-btn" data-mood="excited">🤩 Excited</button>
             </div>
+        </div>
+
+        <div class="selection-section">
+            <h3>🎹 Lead Instrument:</h3>
+            <select id="leadInstrument" class="instrument-selector">
+                <option value="default">Auto (Style-based)</option>
+                <option value="synth">Classic Synth</option>
+                <option value="fmsynth">FM Synth (Brass)</option>
+                <option value="amsynth">AM Synth (Bell)</option>
+                <option value="plucksynth">Pluck (Guitar)</option>
+                <option value="square">Square Wave (8-bit)</option>
+                <option value="sawtooth">Sawtooth (Bright)</option>
+            </select>
+        </div>
+
+        <div class="selection-section">
+            <h3>🎼 Chord Instrument:</h3>
+            <select id="chordInstrument" class="instrument-selector">
+                <option value="default">Auto (Style-based)</option>
+                <option value="electricPiano">Electric Piano</option>
+                <option value="pad">Warm Pad</option>
+                <option value="strings">Strings</option>
+                <option value="organ">Organ</option>
+            </select>
+        </div>
+
+        <div class="selection-section">
+            <h3>🎸 Bass Instrument:</h3>
+            <select id="bassInstrument" class="instrument-selector">
+                <option value="default">Auto (Style-based)</option>
+                <option value="monosynth">Synth Bass</option>
+                <option value="fmbass">FM Bass</option>
+                <option value="pluckbass">Pluck Bass</option>
+            </select>
         </div>
 
         <div class="volume-control">
@@ -1065,6 +1118,96 @@
             }).chain(delay, compressor, filter);
             }
 
+            // ===== ADDITIONAL LEAD INSTRUMENTS =====
+            // Classic Synth (Triangle wave)
+            synthesizers.synth = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { type: 'triangle' },
+                envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 1 },
+                volume: -6
+            }).chain(delay, filter);
+
+            // FM Synth (Brass-like)
+            synthesizers.fmsynth = new Tone.PolySynth(Tone.FMSynth, {
+                harmonicity: 3,
+                modulationIndex: 15,
+                oscillator: { type: 'sine' },
+                envelope: { attack: 0.02, decay: 0.2, sustain: 0.6, release: 0.8 },
+                volume: -4
+            }).chain(delay, compressor, filter);
+
+            // AM Synth (Bell-like)
+            synthesizers.amsynth = new Tone.PolySynth(Tone.AMSynth, {
+                harmonicity: 3,
+                oscillator: { type: 'sine' },
+                envelope: { attack: 0.01, decay: 0.3, sustain: 0.4, release: 1.2 },
+                volume: -6
+            }).chain(chorus, filter);
+
+            // Pluck Synth (Guitar-like)
+            synthesizers.plucksynth = new Tone.PluckSynth({
+                attackNoise: 2,
+                dampening: 4000,
+                resonance: 0.95,
+                volume: -6
+            }).chain(delay, filter);
+
+            // Square Wave (8-bit retro)
+            synthesizers.square = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { type: 'square' },
+                envelope: { attack: 0.001, decay: 0.1, sustain: 0.2, release: 0.5 },
+                volume: -8
+            }).chain(filter);
+
+            // Sawtooth (Bright)
+            synthesizers.sawtooth = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { type: 'sawtooth' },
+                envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 0.8 },
+                volume: -6
+            }).chain(delay, filter);
+
+            // ===== ADDITIONAL CHORD/PAD INSTRUMENTS =====
+            // Strings
+            synthesizers.strings = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { type: 'sawtooth' },
+                envelope: { attack: 0.5, decay: 0.3, sustain: 0.7, release: 2 },
+                volume: -12
+            }).chain(chorus, filter);
+
+            // Organ
+            synthesizers.organ = new Tone.PolySynth(Tone.FMSynth, {
+                harmonicity: 2,
+                modulationIndex: 8,
+                oscillator: { type: 'sine' },
+                envelope: { attack: 0.01, decay: 0.2, sustain: 0.8, release: 0.4 },
+                volume: -10
+            }).chain(filter);
+
+            // ===== ADDITIONAL BASS INSTRUMENTS =====
+            // Synth Bass (Mono)
+            synthesizers.monosynth = new Tone.MonoSynth({
+                oscillator: { type: 'sawtooth' },
+                filter: { Q: 6, type: 'lowpass', rolloff: -24 },
+                envelope: { attack: 0.01, decay: 0.3, sustain: 0.4, release: 0.8 },
+                volume: 0
+            }).toDestination();
+
+            // FM Bass
+            synthesizers.fmbass = new Tone.FMSynth({
+                harmonicity: 1,
+                modulationIndex: 8,
+                oscillator: { type: 'sine' },
+                envelope: { attack: 0.01, decay: 0.2, sustain: 0.4, release: 0.6 },
+                volume: 0
+            }).toDestination();
+
+            // Pluck Bass
+            synthesizers.pluckbass = new Tone.PluckSynth({
+                attackNoise: 1,
+                dampening: 2000,
+                resonance: 0.9,
+                volume: 2
+            }).toDestination();
+
             // Create pad synthesizer with detuned oscillators for richness - QUIETER
             synthesizers.pads = new Tone.PolySynth(Tone.Synth, {
                 oscillator: {
@@ -1206,8 +1349,10 @@
                 leadSynth: params.leadSynth
             });
 
-            // Choose instrument based on style's leadSynth parameter
-            const leadInstrument = synthesizers[params.leadSynth] || synthesizers.melody;
+            // Choose instrument based on user selection or style's leadSynth parameter
+            const userLeadChoice = document.getElementById('leadInstrument').value;
+            const leadInstrumentKey = userLeadChoice !== 'default' ? userLeadChoice : params.leadSynth;
+            const leadInstrument = synthesizers[leadInstrumentKey] || synthesizers.melody;
 
             if (!leadInstrument) {
                 console.error('leadInstrument is undefined!', {
@@ -1244,8 +1389,15 @@
             synthParts.melody.loop = true;
             synthParts.melody.loopEnd = melodySequence.length * Tone.Time(sequenceInterval).toSeconds();
 
-            // Use electric piano for chords in upbeat moods, pads for calm moods
-            const chordInstrument = params.rhythmDensity !== 'low' ? synthesizers.electricPiano : synthesizers.pads;
+            // Choose chord instrument based on user selection or style/mood
+            const userChordChoice = document.getElementById('chordInstrument').value;
+            let chordInstrument;
+            if (userChordChoice !== 'default') {
+                chordInstrument = synthesizers[userChordChoice] || synthesizers.pads;
+            } else {
+                // Use electric piano for chords in upbeat moods, pads for calm moods
+                chordInstrument = params.rhythmDensity !== 'low' ? synthesizers.electricPiano : synthesizers.pads;
+            }
 
             // Create chord progression
             synthParts.chords = new Tone.Part((time, chord) => {
@@ -1278,11 +1430,17 @@
                 }
             });
 
+            // Choose bass instrument based on user selection
+            const userBassChoice = document.getElementById('bassInstrument').value;
+            const bassInstrument = userBassChoice !== 'default' ?
+                (synthesizers[userBassChoice] || synthesizers.bass) :
+                synthesizers.bass;
+
             synthParts.bass = new Tone.Part((time, noteData) => {
                 const timing = time + (Math.random() * 0.02 - 0.01);
                 const velocity = noteData.type === 'root' ? 0.9 : 0.6; // Leading tones softer
                 const duration = noteData.type === 'root' ? '2n' : '16n';
-                synthesizers.bass.triggerAttackRelease(noteData.note, duration, timing, velocity);
+                bassInstrument.triggerAttackRelease(noteData.note, duration, timing, velocity);
             }, bassSequence);
             synthParts.bass.loop = true;
             synthParts.bass.loopEnd = params.bassNotes.length * 2;

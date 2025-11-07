@@ -271,13 +271,10 @@
 
         <div id="status" class="status"></div>
 
-        <div id="musicVibe" style="display: none; margin-top: 30px; text-align: center;">
-            <div id="vibeAnimation" style="font-size: 120px; animation: float 3s ease-in-out infinite;">
-                🎵
+        <div id="musicVibe" style="display: none; position: fixed; z-index: 1000; opacity: 1;">
+            <div id="vibeAnimation">
+                <img src="ameno-dorime-dorime.gif" alt="Vibing" style="width: 200px; height: auto;">
             </div>
-            <p id="vibeText" style="font-size: 18px; color: #666; font-style: italic; margin-top: 10px;">
-                Vibing to the music...
-            </p>
         </div>
     </div>
 
@@ -297,21 +294,12 @@
         let filter = null;
         let isPlaying = false;
         let masterVolume = null;
+        let vibeMovementInterval = null;
 
         // User selection
         let selectedMode = 'synthetic'; // Default to synthetic
         let selectedStyle = null;
         let selectedMood = null;
-
-        // Whimsical vibe emojis for different mood combinations
-        const vibeEmojis = {
-            happy: '🌈✨',
-            sad: '🌧️💭',
-            calm: '🌊☁️',
-            energetic: '⚡🔥',
-            peaceful: '🕊️🌸',
-            excited: '🎉🎊'
-        };
 
         // Style parameter mappings - define musical characteristics for each genre
         const styleMappings = {
@@ -764,6 +752,71 @@
             return moodMappings.calm;
         }
 
+        // Function to move the vibe animation around the screen with rotation and scaling
+        function moveVibeAnimation() {
+            const vibeElement = document.getElementById('musicVibe');
+            const vibeAnimationDiv = document.getElementById('vibeAnimation');
+            const imgElement = vibeAnimationDiv.querySelector('img');
+
+            // Step 1: Fade out
+            vibeElement.style.opacity = '0';
+            vibeElement.style.transition = 'opacity 0.8s ease-out';
+
+            // Step 2: After fade out, change position, rotation, and size
+            setTimeout(() => {
+                // Get viewport dimensions
+                const maxX = window.innerWidth - 300;
+                const maxY = window.innerHeight - 300;
+
+                // Generate random position
+                const randomX = Math.max(20, Math.random() * maxX);
+                const randomY = Math.max(20, Math.random() * maxY);
+
+                // Generate random rotation (between -360 and 360 degrees)
+                const randomRotation = Math.random() * 720 - 360;
+
+                // Generate random scale (between 0.5 and 1.5 for variety)
+                const randomScale = 0.5 + Math.random() * 1.0;
+
+                // Apply position (no transition for instant repositioning)
+                vibeElement.style.transition = 'none';
+                vibeElement.style.left = randomX + 'px';
+                vibeElement.style.top = randomY + 'px';
+
+                // Apply rotation and scale
+                vibeAnimationDiv.style.transform = `rotate(${randomRotation}deg) scale(${randomScale})`;
+
+                // Step 3: Fade back in
+                setTimeout(() => {
+                    vibeElement.style.transition = 'opacity 0.8s ease-in';
+                    vibeElement.style.opacity = '1';
+                }, 50); // Small delay to ensure the repositioning happens before fade in
+
+            }, 800); // Wait for fade out to complete
+        }
+
+        // Function to start the vibe animation movement
+        function startVibeMovement() {
+            const vibeElement = document.getElementById('musicVibe');
+
+            // Set initial opacity
+            vibeElement.style.opacity = '1';
+
+            // Initial position
+            moveVibeAnimation();
+
+            // Move every 5 seconds (visible for ~3.2s, transition for ~1.8s)
+            vibeMovementInterval = setInterval(moveVibeAnimation, 5000);
+        }
+
+        // Function to stop the vibe animation movement
+        function stopVibeMovement() {
+            if (vibeMovementInterval) {
+                clearInterval(vibeMovementInterval);
+                vibeMovementInterval = null;
+            }
+        }
+
         async function generateMusic() {
             if (!selectedStyle || !selectedMood) {
                 showStatus('Please select both a style and a mood!', 'error');
@@ -812,18 +865,10 @@
             document.getElementById('sectionDisplay').style.display = 'block';
 
             // Show whimsical vibe animation
-            const vibeEmoji = vibeEmojis[selectedMood] || '🎵✨';
-            const vibeTexts = {
-                happy: 'Spreading joy and sunshine! ☀️',
-                sad: 'Feeling the melancholy vibes... 🌙',
-                calm: 'Drifting peacefully... 💫',
-                energetic: 'Pumping up the energy! 💪',
-                peaceful: 'Finding inner peace... 🧘',
-                excited: 'Let\'s celebrate! 🎈'
-            };
-            document.getElementById('vibeAnimation').textContent = vibeEmoji;
-            document.getElementById('vibeText').textContent = vibeTexts[selectedMood] || 'Vibing to the music...';
             document.getElementById('musicVibe').style.display = 'block';
+
+            // Start the moving and rotating animation
+            startVibeMovement();
 
             const modeLabel = selectedMode === 'organic' ? 'ORGANIC' : 'SYNTHETIC';
             showStatus(`Playing ${modeLabel} ${selectedStyle.toUpperCase()} ${selectedMood} music - ${params.tempo} BPM`, 'success');
@@ -1386,6 +1431,10 @@
             document.getElementById('playbackControls').style.display = 'none';
             document.getElementById('sectionDisplay').style.display = 'none';
             document.getElementById('musicVibe').style.display = 'none';
+
+            // Stop the vibe movement
+            stopVibeMovement();
+
             showStatus('Music stopped', 'info');
 
             // Dispose master volume

@@ -324,10 +324,8 @@
 
         <div id="status" class="status"></div>
 
-        <div id="musicVibe" style="display: none; position: fixed; z-index: 1000; opacity: 1;">
-            <div id="vibeAnimation">
-                <img src="ameno-dorime-dorime.gif" alt="Vibing" style="width: 200px; height: auto;">
-            </div>
+        <!-- Container for multiple vibing gifs -->
+        <div id="vibeContainer" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1000;">
         </div>
     </div>
 
@@ -347,7 +345,6 @@
         let filter = null;
         let isPlaying = false;
         let masterVolume = null;
-        let vibeMovementInterval = null;
 
         // User selection
         let selectedMode = 'synthetic'; // Default to synthetic
@@ -805,69 +802,125 @@
             return moodMappings.calm;
         }
 
-        // Function to move the vibe animation around the screen with rotation and scaling
-        function moveVibeAnimation() {
-            const vibeElement = document.getElementById('musicVibe');
-            const vibeAnimationDiv = document.getElementById('vibeAnimation');
-            const imgElement = vibeAnimationDiv.querySelector('img');
+        // Store active gifs for cleanup
+        let activeGifs = [];
+        let maxConcurrentGifs = 5;
+        let gifSpawnChance = 0.8; // Probability to spawn on each beat
 
-            // Step 1: Fade out
-            vibeElement.style.opacity = '0';
-            vibeElement.style.transition = 'opacity 0.8s ease-out';
+        // Function to spawn a new gif on beat
+        function spawnVibeGif() {
+            // Clean up old gifs
+            activeGifs = activeGifs.filter(gif => document.body.contains(gif.element));
 
-            // Step 2: After fade out, change position, rotation, and size
-            setTimeout(() => {
-                // Get viewport dimensions
-                const maxX = window.innerWidth - 300;
-                const maxY = window.innerHeight - 300;
-
-                // Generate random position
-                const randomX = Math.max(20, Math.random() * maxX);
-                const randomY = Math.max(20, Math.random() * maxY);
-
-                // Generate random rotation (between -360 and 360 degrees)
-                const randomRotation = Math.random() * 720 - 360;
-
-                // Generate random scale (between 0.5 and 1.5 for variety)
-                const randomScale = 0.5 + Math.random() * 1.0;
-
-                // Apply position (no transition for instant repositioning)
-                vibeElement.style.transition = 'none';
-                vibeElement.style.left = randomX + 'px';
-                vibeElement.style.top = randomY + 'px';
-
-                // Apply rotation and scale
-                vibeAnimationDiv.style.transform = `rotate(${randomRotation}deg) scale(${randomScale})`;
-
-                // Step 3: Fade back in
-                setTimeout(() => {
-                    vibeElement.style.transition = 'opacity 0.8s ease-in';
-                    vibeElement.style.opacity = '1';
-                }, 50); // Small delay to ensure the repositioning happens before fade in
-
-            }, 800); // Wait for fade out to complete
-        }
-
-        // Function to start the vibe animation movement
-        function startVibeMovement() {
-            const vibeElement = document.getElementById('musicVibe');
-
-            // Set initial opacity
-            vibeElement.style.opacity = '1';
-
-            // Initial position
-            moveVibeAnimation();
-
-            // Move every 5 seconds (visible for ~3.2s, transition for ~1.8s)
-            vibeMovementInterval = setInterval(moveVibeAnimation, 5000);
-        }
-
-        // Function to stop the vibe animation movement
-        function stopVibeMovement() {
-            if (vibeMovementInterval) {
-                clearInterval(vibeMovementInterval);
-                vibeMovementInterval = null;
+            // Limit concurrent gifs
+            if (activeGifs.length >= maxConcurrentGifs) {
+                return;
             }
+
+            // Random spawn chance for variety
+            if (Math.random() > gifSpawnChance) {
+                return;
+            }
+
+            const container = document.getElementById('vibeContainer');
+
+            // Create gif element
+            const gifDiv = document.createElement('div');
+            gifDiv.style.position = 'absolute';
+            gifDiv.style.pointerEvents = 'none';
+
+            const img = document.createElement('img');
+            img.src = 'ameno-dorime-dorime.gif';
+            img.alt = 'Vibing';
+
+            // Random size (100-250px)
+            const size = 100 + Math.random() * 150;
+            img.style.width = size + 'px';
+            img.style.height = 'auto';
+
+            gifDiv.appendChild(img);
+
+            // Random starting position
+            const maxX = window.innerWidth - size;
+            const maxY = window.innerHeight - size;
+            const startX = Math.max(0, Math.random() * maxX);
+            const startY = Math.max(0, Math.random() * maxY);
+
+            gifDiv.style.left = startX + 'px';
+            gifDiv.style.top = startY + 'px';
+
+            // Random rotation
+            const rotation = Math.random() * 360;
+
+            // Start invisible
+            gifDiv.style.opacity = '0';
+            gifDiv.style.transform = `rotate(${rotation}deg) scale(0.5)`;
+            gifDiv.style.transition = 'opacity 0.3s ease-out, transform 0.5s ease-out';
+
+            container.appendChild(gifDiv);
+
+            // Animate in
+            setTimeout(() => {
+                gifDiv.style.opacity = '1';
+                gifDiv.style.transform = `rotate(${rotation}deg) scale(1)`;
+            }, 50);
+
+            // Drift animation
+            const driftX = (Math.random() - 0.5) * 200; // Drift up to 200px
+            const driftY = (Math.random() - 0.5) * 200;
+            const driftDuration = 2000 + Math.random() * 2000; // 2-4 seconds
+
+            setTimeout(() => {
+                gifDiv.style.transition = `all ${driftDuration}ms ease-out`;
+                gifDiv.style.left = (startX + driftX) + 'px';
+                gifDiv.style.top = (startY + driftY) + 'px';
+                gifDiv.style.transform = `rotate(${rotation + 180}deg) scale(1.2)`;
+            }, 100);
+
+            // Store reference
+            activeGifs.push({
+                element: gifDiv,
+                spawnTime: Date.now()
+            });
+
+            // Remove after animation (3-5 seconds)
+            const lifetime = 3000 + Math.random() * 2000;
+            setTimeout(() => {
+                gifDiv.style.transition = 'opacity 0.5s ease-out, transform 0.5s ease-out';
+                gifDiv.style.opacity = '0';
+                gifDiv.style.transform = `rotate(${rotation + 360}deg) scale(0.3)`;
+
+                setTimeout(() => {
+                    if (gifDiv.parentNode) {
+                        gifDiv.parentNode.removeChild(gifDiv);
+                    }
+                }, 500);
+            }, lifetime);
+        }
+
+        // Function to setup beat-synced gif spawning
+        function setupBeatSyncedGifs(rhythmDensity) {
+            // Adjust spawn parameters based on rhythm density
+            if (rhythmDensity === 'high') {
+                maxConcurrentGifs = 8;
+                gifSpawnChance = 0.9;
+            } else if (rhythmDensity === 'medium') {
+                maxConcurrentGifs = 5;
+                gifSpawnChance = 0.7;
+            } else {
+                maxConcurrentGifs = 3;
+                gifSpawnChance = 0.5;
+            }
+        }
+
+        // Function to stop the vibe animation movement and clean up all gifs
+        function stopVibeMovement() {
+            // Remove all active gifs
+            const container = document.getElementById('vibeContainer');
+            if (container) {
+                container.innerHTML = '';
+            }
+            activeGifs = [];
         }
 
         async function generateMusic() {
@@ -916,12 +969,6 @@
             isPlaying = true;
             document.getElementById('playbackControls').style.display = 'block';
             document.getElementById('sectionDisplay').style.display = 'block';
-
-            // Show whimsical vibe animation
-            document.getElementById('musicVibe').style.display = 'block';
-
-            // Start the moving and rotating animation
-            startVibeMovement();
 
             const modeLabel = selectedMode === 'organic' ? 'ORGANIC' : 'SYNTHETIC';
             showStatus(`Playing ${modeLabel} ${selectedStyle.toUpperCase()} ${selectedMood} music - ${params.tempo} BPM`, 'success');
@@ -1449,11 +1496,18 @@
             let kickPattern, snarePattern, hihatPattern;
             const drumStyle = params.drumsPattern || 'fourOnFloor';
 
+            // Setup gif spawning based on rhythm density
+            setupBeatSyncedGifs(params.rhythmDensity);
+
             if (drumStyle === 'fourOnFloor' || drumStyle === 'electronic') {
                 // Rock/Electronic: Four-on-the-floor kick
                 const kickInterval = params.rhythmDensity === 'high' ? '4n' : params.rhythmDensity === 'medium' ? '4n' : '2n';
                 kickPattern = new Tone.Loop((time) => {
                     kick.triggerAttackRelease('C1', '8n', time);
+                    // Spawn gif on each kick beat (with built-in probability)
+                    Tone.Draw.schedule(() => {
+                        spawnVibeGif();
+                    }, time);
                 }, kickInterval);
 
                 snarePattern = new Tone.Loop((time) => {
@@ -1469,6 +1523,10 @@
                 // Jazz: Swing pattern
                 kickPattern = new Tone.Loop((time) => {
                     kick.triggerAttackRelease('C1', '8n', time);
+                    // Spawn gif on each kick beat
+                    Tone.Draw.schedule(() => {
+                        spawnVibeGif();
+                    }, time);
                 }, '2n'); // Softer kick
 
                 snarePattern = new Tone.Loop((time) => {
@@ -1488,6 +1546,10 @@
                     if (Math.random() > 0.7) { // Very sparse
                         kick.triggerAttackRelease('C1', '8n', time, 0.2);
                     }
+                    // Spawn gif occasionally (probability handled by spawnVibeGif)
+                    Tone.Draw.schedule(() => {
+                        spawnVibeGif();
+                    }, time);
                 }, '1m');
 
                 snarePattern = new Tone.Loop((time) => {
@@ -1504,6 +1566,10 @@
                 const kickInterval = params.rhythmDensity === 'high' ? '4n' : params.rhythmDensity === 'medium' ? '4n' : '2n';
                 kickPattern = new Tone.Loop((time) => {
                     kick.triggerAttackRelease('C1', '8n', time);
+                    // Spawn gif on each kick beat
+                    Tone.Draw.schedule(() => {
+                        spawnVibeGif();
+                    }, time);
                 }, kickInterval);
 
                 snarePattern = new Tone.Loop((time) => {
@@ -1588,9 +1654,8 @@
             isPlaying = false;
             document.getElementById('playbackControls').style.display = 'none';
             document.getElementById('sectionDisplay').style.display = 'none';
-            document.getElementById('musicVibe').style.display = 'none';
 
-            // Stop the vibe movement
+            // Stop the vibe movement and clean up gifs
             stopVibeMovement();
 
             showStatus('Music stopped', 'info');

@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tone.js Instruments Demo</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .init-button {
+            display: block;
+            margin: 2rem auto;
+            padding: 1rem 3rem;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        .init-button:hover {
+            background: #059669;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .init-button:disabled {
+            background: #6b7280;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .category {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .category h2 {
+            color: #667eea;
+            margin-bottom: 1.5rem;
+            font-size: 1.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .instruments-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+
+        .instrument-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            color: white;
+            transition: all 0.3s;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .instrument-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        .instrument-card:active {
+            transform: translateY(-1px);
+        }
+
+        .instrument-card h3 {
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .instrument-card p {
+            font-size: 0.875rem;
+            opacity: 0.9;
+            line-height: 1.5;
+        }
+
+        .playing {
+            animation: pulse-border 0.5s ease-in-out;
+            border: 3px solid #fbbf24;
+        }
+
+        @keyframes pulse-border {
+            0%, 100% { border-color: #fbbf24; }
+            50% { border-color: #f59e0b; }
+        }
+
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 3rem;
+            opacity: 0.8;
+            font-size: 0.875rem;
+        }
+
+        .note-display {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fbbf24;
+            padding: 1rem 2rem;
+            border-radius: 0.5rem;
+            font-size: 1.5rem;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .note-display.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="note-display" id="noteDisplay">♪ Playing...</div>
+
+    <div class="container">
+        <div class="header">
+            <h1>🎹 Tone.js Instruments Demo</h1>
+            <p>Click any instrument to hear how it sounds!</p>
+        </div>
+
+        <button class="init-button" id="initButton">🔊 Initialize Audio</button>
+
+        <!-- Basic Synths -->
+        <div class="category">
+            <h2>🎵 Basic Synthesizers</h2>
+            <div class="instruments-grid">
+                <div class="instrument-card" data-instrument="synth">
+                    <h3>🎹 Synth</h3>
+                    <p>Basic oscillator synth. Clean and simple tone. Good for leads and pads.</p>
+                </div>
+                <div class="instrument-card" data-instrument="amsynth">
+                    <h3>🔔 AM Synth</h3>
+                    <p>Amplitude Modulation. Metallic, bell-like sounds with shimmer.</p>
+                </div>
+                <div class="instrument-card" data-instrument="fmsynth">
+                    <h3>🎺 FM Synth</h3>
+                    <p>Frequency Modulation. Great for brass, bells, and electric piano sounds.</p>
+                </div>
+                <div class="instrument-card" data-instrument="monosynth">
+                    <h3>🎸 Mono Synth</h3>
+                    <p>Monophonic synth with filter. Perfect for bass lines and leads.</p>
+                </div>
+                <div class="instrument-card" data-instrument="duosynth">
+                    <h3>🎭 Duo Synth</h3>
+                    <p>Two synths in harmony. Rich, chorused sound with vibrato.</p>
+                </div>
+                <div class="instrument-card" data-instrument="polysynth">
+                    <h3>🎼 Poly Synth</h3>
+                    <p>Polyphonic synth. Play multiple notes at once (plays a chord).</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instrument-Like Synths -->
+        <div class="category">
+            <h2>🎸 Instrument Simulations</h2>
+            <div class="instruments-grid">
+                <div class="instrument-card" data-instrument="plucksynth">
+                    <h3>🪕 Pluck Synth</h3>
+                    <p>Plucked string instrument. Sounds like guitar, harp, or koto.</p>
+                </div>
+                <div class="instrument-card" data-instrument="metalsynth">
+                    <h3>🔔 Metal Synth</h3>
+                    <p>Metallic bell sounds. Great for chimes, bells, and metallic percussion.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Drums & Percussion -->
+        <div class="category">
+            <h2>🥁 Drums & Percussion</h2>
+            <div class="instruments-grid">
+                <div class="instrument-card" data-instrument="membranesynth">
+                    <h3>🥁 Membrane Synth</h3>
+                    <p>Drum-like sounds. Perfect for kick drums and toms.</p>
+                </div>
+                <div class="instrument-card" data-instrument="noisesynth">
+                    <h3>📢 Noise Synth</h3>
+                    <p>White noise generator. Great for snares, hi-hats, and FX.</p>
+                </div>
+                <div class="instrument-card" data-instrument="kick">
+                    <h3>👟 Kick Drum</h3>
+                    <p>Deep bass drum. The foundation of your beat.</p>
+                </div>
+                <div class="instrument-card" data-instrument="snare">
+                    <h3>🎯 Snare Drum</h3>
+                    <p>Crisp snare hit. The backbeat of your rhythm.</p>
+                </div>
+                <div class="instrument-card" data-instrument="hihat">
+                    <h3>🎩 Hi-Hat</h3>
+                    <p>Bright metallic hi-hat. Adds sparkle to your drums.</p>
+                </div>
+                <div class="instrument-card" data-instrument="clap">
+                    <h3>👏 Clap</h3>
+                    <p>Hand clap sound. Adds human feel to percussion.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Oscillator Types -->
+        <div class="category">
+            <h2>〰️ Oscillator Waveforms</h2>
+            <div class="instruments-grid">
+                <div class="instrument-card" data-instrument="sine">
+                    <h3>〰️ Sine Wave</h3>
+                    <p>Pure, smooth tone. The fundamental waveform.</p>
+                </div>
+                <div class="instrument-card" data-instrument="square">
+                    <h3>◼️ Square Wave</h3>
+                    <p>Hollow, clarinet-like. Classic video game sound.</p>
+                </div>
+                <div class="instrument-card" data-instrument="triangle">
+                    <h3>🔺 Triangle Wave</h3>
+                    <p>Softer than square. Mellow and smooth.</p>
+                </div>
+                <div class="instrument-card" data-instrument="sawtooth">
+                    <h3>🪚 Sawtooth Wave</h3>
+                    <p>Bright and buzzy. Great for brass and strings.</p>
+                </div>
+                <div class="instrument-card" data-instrument="fatsawtooth">
+                    <h3>🎹 Fat Sawtooth</h3>
+                    <p>Multiple detuned saws. Thick, analog-style sound.</p>
+                </div>
+                <div class="instrument-card" data-instrument="pulse">
+                    <h3>⚡ Pulse Wave</h3>
+                    <p>Variable width pulse. From thin to thick sound.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>🎵 Built with Tone.js • Click any instrument card to hear it play!</p>
+            <p>Each instrument plays a melody or pattern to showcase its character.</p>
+        </div>
+    </div>
+
+    <script>
+        let isInitialized = false;
+        const instruments = {};
+        const noteDisplay = document.getElementById('noteDisplay');
+
+        // Initialize audio context
+        async function initAudio() {
+            await Tone.start();
+            console.log('Audio initialized');
+
+            // Basic Synths
+            instruments.synth = new Tone.Synth({
+                oscillator: { type: 'triangle' },
+                envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 1 }
+            }).toDestination();
+
+            instruments.amsynth = new Tone.AMSynth({
+                harmonicity: 2,
+                oscillator: { type: 'sine' },
+                envelope: { attack: 0.01, decay: 0.2, sustain: 0.3, release: 1 }
+            }).toDestination();
+
+            instruments.fmsynth = new Tone.FMSynth({
+                harmonicity: 3,
+                modulationIndex: 10,
+                oscillator: { type: 'sine' },
+                envelope: { attack: 0.01, decay: 0.2, sustain: 0.6, release: 0.8 }
+            }).toDestination();
+
+            instruments.monosynth = new Tone.MonoSynth({
+                oscillator: { type: 'sawtooth' },
+                filter: { Q: 6, type: 'lowpass', rolloff: -24 },
+                envelope: { attack: 0.01, decay: 0.3, sustain: 0.4, release: 0.8 }
+            }).toDestination();
+
+            instruments.duosynth = new Tone.DuoSynth({
+                vibratoAmount: 0.5,
+                vibratoRate: 5,
+                harmonicity: 1.5,
+                voice0: { oscillator: { type: 'sine' } },
+                voice1: { oscillator: { type: 'sine' } }
+            }).toDestination();
+
+            instruments.polysynth = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { type: 'fatsawtooth' },
+                envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 1 }
+            }).toDestination();
+
+            // Instrument-Like
+            instruments.plucksynth = new Tone.PluckSynth({
+                attackNoise: 1,
+                dampening: 4000,
+                resonance: 0.9
+            }).toDestination();
+
+            instruments.metalsynth = new Tone.MetalSynth({
+                frequency: 200,
+                envelope: { attack: 0.001, decay: 1.4, release: 0.2 },
+                harmonicity: 8,
+                modulationIndex: 20,
+                resonance: 2000,
+                octaves: 1.5
+            }).toDestination();
+
+            // Drums
+            instruments.membranesynth = new Tone.MembraneSynth({
+                pitchDecay: 0.05,
+                octaves: 10,
+                oscillator: { type: 'sine' },
+                envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4 }
+            }).toDestination();
+
+            instruments.noisesynth = new Tone.NoiseSynth({
+                noise: { type: 'white' },
+                envelope: { attack: 0.005, decay: 0.1, sustain: 0 }
+            }).toDestination();
+
+            instruments.kick = new Tone.MembraneSynth({
+                pitchDecay: 0.05,
+                octaves: 10,
+                oscillator: { type: 'sine' },
+                envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4 }
+            }).toDestination();
+
+            instruments.snare = new Tone.NoiseSynth({
+                noise: { type: 'white' },
+                envelope: { attack: 0.001, decay: 0.2, sustain: 0, release: 0.2 }
+            }).toDestination();
+
+            instruments.hihat = new Tone.MetalSynth({
+                frequency: 200,
+                envelope: { attack: 0.001, decay: 0.1, release: 0.05 },
+                harmonicity: 5.1,
+                modulationIndex: 32,
+                resonance: 4000,
+                octaves: 1.5
+            }).toDestination();
+
+            instruments.clap = new Tone.NoiseSynth({
+                noise: { type: 'pink' },
+                envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.1 }
+            }).toDestination();
+
+            // Oscillator types (using basic Synth with different waveforms)
+            instruments.sine = new Tone.Synth({
+                oscillator: { type: 'sine' },
+                envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 1 }
+            }).toDestination();
+
+            instruments.square = new Tone.Synth({
+                oscillator: { type: 'square' },
+                envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 1 }
+            }).toDestination();
+
+            instruments.triangle = new Tone.Synth({
+                oscillator: { type: 'triangle' },
+                envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 1 }
+            }).toDestination();
+
+            instruments.sawtooth = new Tone.Synth({
+                oscillator: { type: 'sawtooth' },
+                envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 1 }
+            }).toDestination();
+
+            instruments.fatsawtooth = new Tone.Synth({
+                oscillator: { type: 'fatsawtooth' },
+                envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 1 }
+            }).toDestination();
+
+            instruments.pulse = new Tone.Synth({
+                oscillator: { type: 'pulse' },
+                envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 1 }
+            }).toDestination();
+
+            isInitialized = true;
+            document.getElementById('initButton').textContent = '✅ Audio Ready!';
+            document.getElementById('initButton').disabled = true;
+        }
+
+        // Play patterns for each instrument type
+        function playInstrument(type, card) {
+            if (!isInitialized) {
+                alert('Please initialize audio first!');
+                return;
+            }
+
+            const now = Tone.now();
+            card.classList.add('playing');
+            showNoteDisplay();
+
+            setTimeout(() => {
+                card.classList.remove('playing');
+            }, 500);
+
+            // Melodic instruments
+            if (['synth', 'amsynth', 'fmsynth', 'monosynth', 'duosynth',
+                 'sine', 'square', 'triangle', 'sawtooth', 'fatsawtooth', 'pulse'].includes(type)) {
+                const melody = ['C4', 'E4', 'G4', 'C5'];
+                melody.forEach((note, i) => {
+                    instruments[type].triggerAttackRelease(note, '8n', now + i * 0.15);
+                });
+            }
+            // Polyphonic - play chord
+            else if (type === 'polysynth') {
+                instruments[type].triggerAttackRelease(['C4', 'E4', 'G4', 'B4'], '2n', now);
+            }
+            // Pluck - arpeggio
+            else if (type === 'plucksynth') {
+                const arp = ['C4', 'D4', 'E4', 'G4', 'E4', 'D4', 'C4'];
+                arp.forEach((note, i) => {
+                    instruments[type].triggerAttackRelease(note, '8n', now + i * 0.1);
+                });
+            }
+            // Metal synth - bell pattern
+            else if (type === 'metalsynth') {
+                instruments[type].triggerAttackRelease('32n', now);
+            }
+            // Membrane/Kick
+            else if (type === 'membranesynth' || type === 'kick') {
+                instruments[type].triggerAttackRelease('C1', '8n', now);
+                instruments[type].triggerAttackRelease('C1', '8n', now + 0.25);
+            }
+            // Noise synth
+            else if (type === 'noisesynth') {
+                instruments[type].triggerAttackRelease('16n', now);
+            }
+            // Snare - pattern
+            else if (type === 'snare') {
+                instruments[type].triggerAttackRelease('8n', now);
+                instruments[type].triggerAttackRelease('8n', now + 0.5);
+            }
+            // Hi-hat - fast pattern
+            else if (type === 'hihat') {
+                for (let i = 0; i < 4; i++) {
+                    instruments[type].triggerAttackRelease('32n', now + i * 0.1);
+                }
+            }
+            // Clap - rhythmic
+            else if (type === 'clap') {
+                instruments[type].triggerAttackRelease('8n', now);
+                instruments[type].triggerAttackRelease('8n', now + 0.5);
+            }
+        }
+
+        function showNoteDisplay() {
+            noteDisplay.classList.add('show');
+            setTimeout(() => {
+                noteDisplay.classList.remove('show');
+            }, 800);
+        }
+
+        // Event listeners
+        document.getElementById('initButton').addEventListener('click', initAudio);
+
+        document.querySelectorAll('.instrument-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const instrument = card.dataset.instrument;
+                playInstrument(instrument, card);
+            });
+        });
+    </script>
+</body>
+</html>

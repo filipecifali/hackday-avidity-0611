@@ -1015,68 +1015,72 @@
 
             const isOrganic = params.mode === 'organic';
 
+            // Helper function to create sample URLs (used for both organic instruments)
+            const createSampleUrls = (baseUrl, notes) => {
+                const urls = {};
+                notes.forEach(note => {
+                    urls[note] = `${baseUrl}${note}.mp3`;
+                });
+                return urls;
+            };
+
+            // Sample URLs - local first, CDN fallback
+            const pianoBaseUrl = 'samples/piano/';
+            const pianoFallbackUrl = 'https://tonejs.github.io/audio/salamander/';
+
             if (isOrganic) {
-                // ORGANIC MODE: More realistic, natural instrument sounds
-                console.log('Creating ORGANIC instruments');
+                // ORGANIC MODE: Real audio samples with Tone.Sampler
+                console.log('Creating ORGANIC instruments with audio samples');
 
-                // Acoustic Piano - Warmer, longer release
-                synthesizers.electricPiano = new Tone.PolySynth(Tone.Synth, {
-                    oscillator: { type: 'triangle' },
-                    envelope: {
-                        attack: 0.005,
-                        decay: 0.3,
-                        sustain: 0.1,
-                        release: 3 // Long natural release
+                // Piano sampler with common notes
+                const pianoNotes = ['C2', 'D2', 'E2', 'F2', 'G2', 'A2', 'B2',
+                                   'C3', 'D3', 'E3', 'F3', 'G3', 'A3', 'B3',
+                                   'C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5'];
+
+                // Create piano sampler (will be used for electricPiano)
+                synthesizers.electricPiano = new Tone.Sampler({
+                    urls: createSampleUrls(pianoFallbackUrl, pianoNotes),
+                    release: 1,
+                    volume: -8,
+                    onload: () => {
+                        console.log('Piano samples loaded successfully');
                     },
-                    volume: -8
+                    onerror: (error) => {
+                        console.warn('Failed to load piano samples:', error);
+                        // Fallback to synth
+                        synthesizers.electricPiano = new Tone.PolySynth(Tone.Synth, {
+                            oscillator: { type: 'triangle' },
+                            envelope: { attack: 0.005, decay: 0.3, sustain: 0.1, release: 3 },
+                            volume: -8
+                        }).chain(chorus, filter);
+                    }
                 }).chain(chorus, filter);
 
-                // Real Brass - More breath, articulation
-                // COMMENTED OUT TEMPORARILY - TESTING
-                /*synthesizers.brass = new Tone.PolySynth(Tone.FMSynth, {
-                    harmonicity: 2.8,
-                    modulationIndex: 12,
-                    oscillator: { type: 'sine' },
-                    envelope: {
-                        attack: 0.15, // Slower attack like real brass
-                        decay: 0.4,
-                        sustain: 0.7,
-                        release: 1.5
-                    },
-                    modulation: { type: 'sine' },
-                    modulationEnvelope: {
-                        attack: 0.2,
-                        decay: 0.3,
-                        sustain: 0.6,
-                        release: 1.2
-                    },
-                    volume: -2
-                }).chain(delay, compressor, filter);*/
-                synthesizers.brass = synthesizers.melody; // Use melody as fallback
+                // Lead/Melody sampler (using subset of piano for now)
+                const melodyNotes = ['C3', 'D3', 'E3', 'F3', 'G3', 'A3', 'B3',
+                                    'C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4'];
 
-                // Organic Lead - String-like
-                synthesizers.trumpet = new Tone.PolySynth(Tone.Synth, {
-                    oscillator: { type: 'sawtooth' },
-                    envelope: {
-                        attack: 0.08,
-                        decay: 0.2,
-                        sustain: 0.5,
-                        release: 1.2
-                    },
-                    volume: -4
-                }).chain(delay, filter);
-
-                // Warm Pad/Strings
-                synthesizers.melody = new Tone.PolySynth(Tone.Synth, {
-                    oscillator: { type: 'sine' },
-                    envelope: {
-                        attack: 0.3, // Very slow attack
-                        decay: 0.5,
-                        sustain: 0.8,
-                        release: 2.5
-                    },
-                    volume: -6
+                synthesizers.melody = new Tone.Sampler({
+                    urls: createSampleUrls(pianoFallbackUrl, melodyNotes),
+                    release: 2,
+                    volume: -6,
+                    onload: () => {
+                        console.log('Melody samples loaded successfully');
+                    }
                 }).chain(chorus, filter);
+
+                // Brass - use piano samples pitched down for now (can replace with brass samples later)
+                synthesizers.brass = new Tone.Sampler({
+                    urls: createSampleUrls(pianoFallbackUrl, ['C3', 'E3', 'G3', 'C4']),
+                    release: 1.5,
+                    volume: -2,
+                    onload: () => {
+                        console.log('Brass samples loaded successfully');
+                    }
+                }).chain(delay, compressor, filter);
+
+                // Trumpet/Lead - same as melody for now
+                synthesizers.trumpet = synthesizers.melody;
 
             } else {
                 // SYNTHETIC MODE: Original electronic sounds
@@ -1255,48 +1259,76 @@
                 volume: 2
             }).toDestination();
 
-            // Create pad synthesizer with detuned oscillators for richness - QUIETER
-            synthesizers.pads = new Tone.PolySynth(Tone.Synth, {
-                oscillator: {
-                    type: 'sine',
-                    count: 3,
-                    spread: 30 // Detuning for thickness
-                },
-                envelope: {
-                    attack: 1.5,
-                    decay: 0.8,
-                    sustain: 0.8,
-                    release: 3
-                },
-                volume: -18  // Quieter to let other instruments shine
-            }).chain(chorus, filter);
+            // Create pads - use samples for organic, synth for synthetic
+            if (isOrganic) {
+                // Pad sampler for organic mode (using sustained piano notes)
+                const padNotes = ['C3', 'E3', 'G3', 'C4', 'E4', 'G4'];
+                synthesizers.pads = new Tone.Sampler({
+                    urls: createSampleUrls(pianoFallbackUrl, padNotes),
+                    release: 3,
+                    volume: -12, // Quieter background pad
+                    onload: () => {
+                        console.log('Pad samples loaded successfully');
+                    }
+                }).chain(chorus, filter);
+            } else {
+                // Synthetic pad
+                synthesizers.pads = new Tone.PolySynth(Tone.Synth, {
+                    oscillator: {
+                        type: 'sine',
+                        count: 3,
+                        spread: 30 // Detuning for thickness
+                    },
+                    envelope: {
+                        attack: 1.5,
+                        decay: 0.8,
+                        sustain: 0.8,
+                        release: 3
+                    },
+                    volume: -18  // Quieter to let other instruments shine
+                }).chain(chorus, filter);
+            }
 
-            // Create bass synthesizer with sub oscillator - MODERATE
-            synthesizers.bass = new Tone.MonoSynth({
-                oscillator: {
-                    type: 'sawtooth'
-                },
-                filter: {
-                    Q: 2,
-                    type: 'lowpass',
-                    rolloff: -24
-                },
-                envelope: {
-                    attack: 0.01,
-                    decay: 0.3,
-                    sustain: 0.4,
-                    release: 1.2
-                },
-                filterEnvelope: {
-                    attack: 0.01,
-                    decay: 0.15,
-                    sustain: 0.3,
-                    release: 0.8,
-                    baseFrequency: 50,
-                    octaves: 3
-                },
-                volume: 0  // Moderate bass level
-            }).toDestination();
+            // Create bass - use samples for organic, synth for synthetic
+            if (isOrganic) {
+                // Bass sampler for organic mode
+                const bassNotes = ['C2', 'D2', 'E2', 'F2', 'G2', 'A2', 'B2', 'C3'];
+                synthesizers.bass = new Tone.Sampler({
+                    urls: createSampleUrls(pianoFallbackUrl, bassNotes),
+                    release: 1.2,
+                    volume: 2, // Slightly louder for bass presence
+                    onload: () => {
+                        console.log('Bass samples loaded successfully');
+                    }
+                }).toDestination();
+            } else {
+                // Synthetic bass
+                synthesizers.bass = new Tone.MonoSynth({
+                    oscillator: {
+                        type: 'sawtooth'
+                    },
+                    filter: {
+                        Q: 2,
+                        type: 'lowpass',
+                        rolloff: -24
+                    },
+                    envelope: {
+                        attack: 0.01,
+                        decay: 0.3,
+                        sustain: 0.4,
+                        release: 1.2
+                    },
+                    filterEnvelope: {
+                        attack: 0.01,
+                        decay: 0.15,
+                        sustain: 0.3,
+                        release: 0.8,
+                        baseFrequency: 50,
+                        octaves: 3
+                    },
+                    volume: 0  // Moderate bass level
+                }).toDestination();
+            }
 
             // Store effects for cleanup
             synthesizers.chorus = chorus;

@@ -5,7 +5,18 @@
       "file": "832483__harrisonlace__synth_bass_loop_acid_funk_cmin_140.wav",
       "tag": "bass-loop",
       "duration": 4.0,
-      "license": "CC BY"
+      "license": "CC BY",
+      "bpm": 140,
+      "key": "C",
+      "mode": "minor",
+      "style": "acid-funk",
+      "rhythm": "syncopated",
+      "notePattern": ["C2", "Eb2", "G2", "C3", "Bb2", "G2", "C2", "rest"],
+      "groove": {
+        "swing": 0.6,
+        "slides": true,
+        "staccato": false
+      }
     }
   ],
   "melody": [],

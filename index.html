@@ -1014,6 +1014,16 @@
                 // Create players for all samples (but don't start yet)
                 const players = [];
 
+                // Track sample metadata for matching generated music
+                let sampleMetadata = {
+                    bpm: null,
+                    key: null,
+                    mode: null,
+                    notePattern: null,
+                    groove: null,
+                    rhythm: null
+                };
+
                 // Load drum loop
                 if (manifest.drums && manifest.drums.length > 0) {
                     const drumLoops = manifest.drums.filter(s => s.tag === 'drum-loop');
@@ -1045,6 +1055,14 @@
 
                         synthParts.bass = bassPlayer;
                         players.push(bassPlayer);
+
+                        // Capture sample metadata if available
+                        if (bassSample.bpm) sampleMetadata.bpm = bassSample.bpm;
+                        if (bassSample.key) sampleMetadata.key = bassSample.key;
+                        if (bassSample.mode) sampleMetadata.mode = bassSample.mode;
+                        if (bassSample.notePattern) sampleMetadata.notePattern = bassSample.notePattern;
+                        if (bassSample.groove) sampleMetadata.groove = bassSample.groove;
+                        if (bassSample.rhythm) sampleMetadata.rhythm = bassSample.rhythm;
                     }
                 }
 
@@ -1084,13 +1102,55 @@
                 // Now start all players
                 players.forEach(player => player.start(0));
 
-                console.log('🎵 Sample loops playing!');
-                console.log('🎹 Now generating complementary music on top...');
+                console.log('🎵 Sample loops playing as foundation!');
+                console.log('🎼 Analyzing sample and generating evolving music...');
 
-                // Generate complementary synthesized parts to build on the samples
-                await generateComplementaryParts(params, manifest);
+                // Adapt params based on sample metadata
+                if (sampleMetadata.bpm) {
+                    console.log(`🎯 Detected BPM: ${sampleMetadata.bpm} - syncing tempo!`);
+                    Tone.Transport.bpm.value = sampleMetadata.bpm;
+                    params.tempo = sampleMetadata.bpm;
+                }
 
-                console.log('✅ Full track playing (samples + generated)!');
+                if (sampleMetadata.key && sampleMetadata.mode) {
+                    console.log(`🎯 Detected key: ${sampleMetadata.key} ${sampleMetadata.mode} - matching scale!`);
+
+                    // Build scale based on detected key/mode
+                    const rootNote = sampleMetadata.key;
+                    const intervals = sampleMetadata.mode === 'minor' ?
+                        [0, 2, 3, 5, 7, 8, 10] :  // Natural minor
+                        [0, 2, 4, 5, 7, 9, 11];    // Major
+
+                    // Generate scale starting from root note (C4 = middle C)
+                    const rootMidi = 60 + ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+                        .indexOf(rootNote);
+
+                    params.scale = [];
+                    for (let octave = 2; octave <= 5; octave++) {
+                        intervals.forEach(interval => {
+                            const midi = rootMidi - 24 + (octave - 2) * 12 + interval;
+                            params.scale.push(Tone.Frequency(midi, 'midi').toNote());
+                        });
+                    }
+
+                    // Build chords in the detected key
+                    params.chords = intervals.slice(0, 4).map(interval => {
+                        const rootMidi = 60 + ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+                            .indexOf(rootNote);
+                        return [
+                            Tone.Frequency(rootMidi + interval, 'midi').toNote(),
+                            Tone.Frequency(rootMidi + interval + (sampleMetadata.mode === 'minor' ? 3 : 4), 'midi').toNote(),
+                            Tone.Frequency(rootMidi + interval + 7, 'midi').toNote()
+                        ];
+                    });
+
+                    console.log('🎼 Generated scale:', params.scale.slice(0, 7));
+                }
+
+                // Generate evolving music based on sample style
+                await generateEvolvingMusic(params, manifest, players, sampleMetadata);
+
+                console.log('✅ Evolving track playing!');
 
             } catch (error) {
                 console.error('❌ Error loading loops:', error);
@@ -1098,7 +1158,266 @@
             }
         }
 
-        // Generate drums, melody, and chords to complement the sample loops
+        // Generate evolving music that grows dynamically from the sample
+        async function generateEvolvingMusic(params, manifest, samplePlayers, sampleMetadata) {
+            console.log('🎵 Creating dynamic, evolving composition...');
+
+            if (sampleMetadata.notePattern) {
+                console.log('🎯 Detected note pattern from sample:', sampleMetadata.notePattern);
+                console.log('🎯 Groove:', sampleMetadata.groove);
+                console.log('🎯 Rhythm:', sampleMetadata.rhythm);
+            }
+
+            // Section structure: intro (sample) → build → peak → variation → outro
+            const sections = [
+                { name: 'intro', duration: 8, intensity: 0.3 },      // Just sample + light drums
+                { name: 'build', duration: 8, intensity: 0.6 },      // Add bass variations
+                { name: 'peak', duration: 16, intensity: 1.0 },      // Full arrangement
+                { name: 'variation', duration: 16, intensity: 0.8 }, // Change patterns
+                { name: 'outro', duration: 8, intensity: 0.4 }       // Wind down
+            ];
+
+            let currentTime = 0;
+            const hasDrumSamples = manifest.drums && manifest.drums.length > 0;
+            const hasBassSamples = manifest.bass && manifest.bass.length > 0;
+
+            // Create instruments for generation
+            const generatedBass = new Tone.MonoSynth({
+                oscillator: { type: 'sawtooth' },
+                filter: { Q: 4, type: 'lowpass', rolloff: -24 },
+                envelope: { attack: 0.01, decay: 0.2, sustain: 0.5, release: 0.8 },
+                volume: -6
+            }).connect(masterVolume);
+
+            const generatedMelody = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { type: 'triangle' },
+                envelope: { attack: 0.01, decay: 0.1, sustain: 0.3, release: 1 },
+                volume: -8
+            }).connect(masterVolume);
+
+            const generatedPad = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { type: 'sine', count: 3, spread: 20 },
+                envelope: { attack: 1, decay: 0.5, sustain: 0.8, release: 2 },
+                volume: -16
+            }).connect(masterVolume);
+
+            synthesizers.generatedBass = generatedBass;
+            synthesizers.generatedMelody = generatedMelody;
+            synthesizers.generatedPad = generatedPad;
+
+            // Drums if needed
+            let kick, snare, hihat;
+            if (!hasDrumSamples) {
+                kick = new Tone.MembraneSynth({
+                    pitchDecay: 0.05, octaves: 10,
+                    oscillator: { type: 'sine' },
+                    envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4 },
+                    volume: -4
+                }).connect(masterVolume);
+
+                snare = new Tone.NoiseSynth({
+                    noise: { type: 'white' },
+                    envelope: { attack: 0.005, decay: 0.1, sustain: 0 },
+                    volume: -6
+                }).connect(masterVolume);
+
+                hihat = new Tone.MetalSynth({
+                    frequency: 200,
+                    envelope: { attack: 0.001, decay: 0.1, release: 0.01 },
+                    harmonicity: 5.1, modulationIndex: 32,
+                    resonance: 4000, octaves: 1.5,
+                    volume: -16
+                }).connect(masterVolume);
+            }
+
+            // Schedule evolving sections
+            sections.forEach((section, sectionIndex) => {
+                const startTime = currentTime;
+                const endTime = currentTime + section.duration;
+
+                console.log(`📍 Section ${sectionIndex + 1}: ${section.name} (${startTime}s - ${endTime}s) intensity: ${section.intensity}`);
+
+                // Control sample volume based on section
+                samplePlayers.forEach(player => {
+                    Tone.Transport.schedule((time) => {
+                        // Fade sample in/out dynamically
+                        const fadeTime = 2;
+                        if (section.name === 'intro') {
+                            player.volume.linearRampTo(-3, fadeTime, time);
+                        } else if (section.name === 'peak') {
+                            player.volume.linearRampTo(-8, fadeTime, time); // Quieter during peak
+                        } else if (section.name === 'outro') {
+                            player.volume.linearRampTo(0, fadeTime, time); // Bring back for outro
+                        }
+                    }, startTime);
+                });
+
+                // Generate evolving bass line that matches the sample pattern
+                if (hasBassSamples && section.intensity > 0.5) {
+                    // Use the actual pattern from the sample
+                    const basePattern = sampleMetadata.notePattern || params.scale.filter((_, i) => i % 7 < 5);
+                    const swing = sampleMetadata.groove?.swing || 0.5;
+
+                    // Create variations of the original pattern
+                    const variations = generatePatternVariations(basePattern, section.intensity, sectionIndex);
+
+                    variations.forEach((note, i) => {
+                        if (!note || note === 'rest') return;
+
+                        // Apply swing/groove
+                        const baseNoteTime = i * 0.5; // 8th notes
+                        const swingOffset = (i % 2 === 1) ? swing * 0.1 : 0; // Swing on off-beats
+                        const noteTime = startTime + baseNoteTime + swingOffset;
+
+                        if (noteTime < endTime) {
+                            Tone.Transport.schedule((time) => {
+                                // Add slides if the sample has them
+                                if (sampleMetadata.groove?.slides && Math.random() > 0.7) {
+                                    // Slide from a semitone below
+                                    const slideFromMidi = Tone.Frequency(note).toMidi() - 1;
+                                    const slideFrom = Tone.Frequency(slideFromMidi, 'midi').toNote();
+                                    generatedBass.triggerAttack(slideFrom, time);
+                                    generatedBass.frequency.linearRampTo(note, 0.05, time);
+                                    generatedBass.triggerRelease(time + 0.4);
+                                } else {
+                                    generatedBass.triggerAttackRelease(note, '8n', time, section.intensity * 0.8);
+                                }
+                            }, noteTime);
+                        }
+                    });
+                }
+
+                // Generate evolving melody
+                if (section.intensity > 0.4) {
+                    const melodyScale = params.scale.filter((_, i) => i % 7 >= 2); // Higher notes
+                    const melodyPattern = generateMelody(melodyScale, 'medium', 16);
+
+                    melodyPattern.forEach((note, i) => {
+                        const noteTime = startTime + i * 0.25; // 16th notes
+                        if (noteTime < endTime && Math.random() < section.intensity) {
+                            Tone.Transport.schedule((time) => {
+                                generatedMelody.triggerAttackRelease(note, '16n', time, section.intensity * 0.6);
+                            }, noteTime);
+                        }
+                    });
+                }
+
+                // Pad chords for atmosphere
+                if (section.intensity > 0.3) {
+                    params.chords.forEach((chord, i) => {
+                        const chordTime = startTime + i * 4; // Whole notes
+                        if (chordTime < endTime) {
+                            Tone.Transport.schedule((time) => {
+                                generatedPad.triggerAttackRelease(chord, '2n', time, section.intensity * 0.4);
+                            }, chordTime);
+                        }
+                    });
+                }
+
+                // Dynamic drums
+                if (!hasDrumSamples && section.intensity > 0.3) {
+                    // Kick pattern
+                    for (let beat = 0; beat < section.duration; beat += 1) {
+                        const beatTime = startTime + beat;
+                        if (beat % 2 === 0 || section.intensity > 0.7) {
+                            Tone.Transport.schedule((time) => {
+                                kick.triggerAttackRelease('C1', '8n', time);
+                                Tone.Draw.schedule(() => spawnVibeGif(), time);
+                            }, beatTime);
+                        }
+                    }
+
+                    // Snare on 2 and 4
+                    for (let beat = 1; beat < section.duration; beat += 2) {
+                        Tone.Transport.schedule((time) => {
+                            snare.triggerAttackRelease('8n', time);
+                        }, startTime + beat);
+                    }
+
+                    // Hi-hats based on intensity
+                    const hihatInterval = section.intensity > 0.7 ? 0.25 : 0.5;
+                    for (let t = 0; t < section.duration; t += hihatInterval) {
+                        Tone.Transport.schedule((time) => {
+                            hihat.triggerAttackRelease('32n', time, section.intensity * 0.5);
+                        }, startTime + t);
+                    }
+                }
+
+                currentTime = endTime;
+            });
+
+            // Total track length
+            console.log(`🎼 Total track length: ${currentTime} seconds`);
+        }
+
+        // Generate variations of a note pattern (keeps the vibe, adds changes)
+        function generatePatternVariations(basePattern, intensity, sectionIndex) {
+            const variations = [];
+            const patternLength = basePattern.length;
+
+            // Repeat pattern multiple times with variations
+            for (let repeat = 0; repeat < 4; repeat++) {
+                basePattern.forEach((note, i) => {
+                    if (note === 'rest') {
+                        // Occasionally add notes in rest positions for variety
+                        if (intensity > 0.7 && Math.random() > 0.8) {
+                            // Pick a note from nearby in the pattern
+                            const nearbyNote = basePattern[(i - 1 + patternLength) % patternLength];
+                            variations.push(nearbyNote !== 'rest' ? nearbyNote : null);
+                        } else {
+                            variations.push('rest');
+                        }
+                    } else {
+                        // Occasionally transpose or skip notes
+                        const random = Math.random();
+
+                        if (random < 0.1 * intensity && sectionIndex > 1) {
+                            // Transpose up an octave (variation)
+                            try {
+                                const noteMidi = Tone.Frequency(note).toMidi();
+                                variations.push(Tone.Frequency(noteMidi + 12, 'midi').toNote());
+                            } catch (e) {
+                                variations.push(note);
+                            }
+                        } else if (random < 0.15 * intensity) {
+                            // Occasional rest for variation
+                            variations.push('rest');
+                        } else {
+                            // Keep original note
+                            variations.push(note);
+                        }
+                    }
+                });
+            }
+
+            return variations;
+        }
+
+        // DEPRECATED: Generate a bass line pattern
+        function generateBassLine(scale, intensity, length) {
+            const bassLine = [];
+            let currentIndex = 0;
+
+            for (let i = 0; i < length; i++) {
+                // More active bass for higher intensity
+                if (Math.random() < intensity) {
+                    bassLine.push(scale[currentIndex]);
+
+                    // Move to nearby notes
+                    const movement = Math.random();
+                    if (movement < 0.4) currentIndex += 1;
+                    else if (movement < 0.6) currentIndex -= 1;
+                    else currentIndex += 0; // Stay
+
+                    currentIndex = Math.max(0, Math.min(scale.length - 1, currentIndex));
+                } else {
+                    bassLine.push(null); // Rest
+                }
+            }
+            return bassLine;
+        }
+
+        // DEPRECATED: Old complementary parts function
         async function generateComplementaryParts(params, manifest) {
             // Create drum synthesizers if we don't have drum samples
             const hasDrumSamples = manifest.drums && manifest.drums.length > 0;
@@ -1207,6 +1526,64 @@
             chordPart.start(0);
 
             synthParts.generatedChords = chordPart;
+        }
+
+        // Generate random melody sequence that fits the mood
+        function generateMelody(scale, density, length) {
+            const melody = [];
+            let currentIndex = Math.floor(Math.random() * 4) + 1; // Start in middle of scale
+            let direction = Math.random() > 0.5 ? 1 : -1; // Start moving up or down
+            let stepsSinceChange = 0;
+
+            for (let i = 0; i < length; i++) {
+                melody.push(scale[currentIndex]);
+
+                // Random walk with constraints based on mood
+                const movement = Math.random();
+                if (density === 'high') {
+                    // More jumps and energy
+                    if (movement < 0.3) currentIndex += 2; // Big jump up
+                    else if (movement < 0.5) currentIndex += 1; // Step up
+                    else if (movement < 0.7) currentIndex -= 1; // Step down
+                    else currentIndex -= 2; // Jump down
+                } else if (density === 'medium') {
+                    // Moderate movement
+                    if (movement < 0.35) currentIndex += 1; // Step up
+                    else if (movement < 0.65) currentIndex += 0; // Stay same (repeat)
+                    else currentIndex -= 1; // Step down
+                } else {
+                    // Slower, more melodic movement - creates flowing lines
+                    if (movement < 0.35) {
+                        currentIndex += direction; // Continue in same direction
+                        stepsSinceChange++;
+                    } else if (movement < 0.55) {
+                        currentIndex += 0; // Stay same (but less often)
+                    } else if (movement < 0.75) {
+                        currentIndex -= direction; // Reverse direction
+                        direction *= -1;
+                        stepsSinceChange = 0;
+                    } else {
+                        // Occasional larger jump to add interest
+                        currentIndex += direction * 2;
+                        stepsSinceChange++;
+                    }
+
+                    // Change direction after too many steps in one direction
+                    if (stepsSinceChange > 3) {
+                        direction *= -1;
+                        stepsSinceChange = 0;
+                    }
+                }
+
+                // Keep within scale bounds
+                currentIndex = Math.max(0, Math.min(scale.length - 1, currentIndex));
+
+                // If we hit bounds, reverse direction
+                if (currentIndex === 0 || currentIndex === scale.length - 1) {
+                    direction *= -1;
+                }
+            }
+            return melody;
         }
 
         async function playSynthesizedMusic(params) {
@@ -1576,64 +1953,6 @@
             synthesizers.snare = snare;
             synthesizers.hihat = hihat;
             synthesizers.shaker = shaker;
-
-            // Generate random melody sequence that fits the mood
-            function generateMelody(scale, density, length) {
-                const melody = [];
-                let currentIndex = Math.floor(Math.random() * 4) + 1; // Start in middle of scale
-                let direction = Math.random() > 0.5 ? 1 : -1; // Start moving up or down
-                let stepsSinceChange = 0;
-
-                for (let i = 0; i < length; i++) {
-                    melody.push(scale[currentIndex]);
-
-                    // Random walk with constraints based on mood
-                    const movement = Math.random();
-                    if (density === 'high') {
-                        // More jumps and energy
-                        if (movement < 0.3) currentIndex += 2; // Big jump up
-                        else if (movement < 0.5) currentIndex += 1; // Step up
-                        else if (movement < 0.7) currentIndex -= 1; // Step down
-                        else currentIndex -= 2; // Jump down
-                    } else if (density === 'medium') {
-                        // Moderate movement
-                        if (movement < 0.35) currentIndex += 1; // Step up
-                        else if (movement < 0.65) currentIndex += 0; // Stay same (repeat)
-                        else currentIndex -= 1; // Step down
-                    } else {
-                        // Slower, more melodic movement - creates flowing lines
-                        if (movement < 0.35) {
-                            currentIndex += direction; // Continue in same direction
-                            stepsSinceChange++;
-                        } else if (movement < 0.55) {
-                            currentIndex += 0; // Stay same (but less often)
-                        } else if (movement < 0.75) {
-                            currentIndex -= direction; // Reverse direction
-                            direction *= -1;
-                            stepsSinceChange = 0;
-                        } else {
-                            // Occasional larger jump to add interest
-                            currentIndex += direction * 2;
-                            stepsSinceChange++;
-                        }
-
-                        // Change direction after too many steps in one direction
-                        if (stepsSinceChange > 3) {
-                            direction *= -1;
-                            stepsSinceChange = 0;
-                        }
-                    }
-
-                    // Keep within scale bounds
-                    currentIndex = Math.max(0, Math.min(scale.length - 1, currentIndex));
-
-                    // If we hit bounds, reverse direction
-                    if (currentIndex === 0 || currentIndex === scale.length - 1) {
-                        direction *= -1;
-                    }
-                }
-                return melody;
-            }
 
             // Determine note durations based on rhythm density
             let noteDuration, sequenceInterval, melodyLength;

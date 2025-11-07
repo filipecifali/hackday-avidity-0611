@@ -748,6 +748,429 @@
             return structures[energy];
         }
 
+        // ========== SECTION GENERATION FUNCTIONS (Electronic Style) ==========
+
+        /**
+         * Generate intro section - sparse, building atmosphere
+         * @param {Object} params - Musical parameters (tempo, scale, chords, mood, etc.)
+         * @returns {Object} Section data with melody, bass, chords, and timing
+         */
+        function generateIntro(params) {
+            console.log('🎵 Generating Intro...');
+
+            const duration = 8; // 8 bars
+            const section = {
+                name: 'intro',
+                duration: duration,
+                intensity: 0.3,
+                melodyNotes: [],
+                bassNotes: [],
+                chords: [],
+                drumPattern: 'minimal'
+            };
+
+            // Sparse melody - only a few notes to set the mood
+            const introScale = params.scale.slice(0, 5); // Use lower notes
+            const melodyLength = 4; // Short intro melody
+            const melody = generateMelody(introScale, 'low', melodyLength);
+
+            // Schedule melody notes sparsely
+            melody.forEach((note, i) => {
+                if (Math.random() > 0.4) { // Only 60% of notes play
+                    section.melodyNotes.push({
+                        note: note,
+                        time: i * 2, // Slow spacing (half notes)
+                        duration: '2n',
+                        velocity: 0.5
+                    });
+                }
+            });
+
+            // Minimal bass - just root notes
+            const introBass = params.chords.slice(0, 2); // Use first 2 chords
+            introBass.forEach((chord, i) => {
+                const rootNote = chord[0].replace(/[0-9]/g, '') + '2'; // Extract root, octave 2
+                section.bassNotes.push({
+                    note: rootNote,
+                    time: i * 4,
+                    duration: '1n',
+                    velocity: 0.6
+                });
+            });
+
+            // Ambient pad chords
+            params.chords.slice(0, 2).forEach((chord, i) => {
+                section.chords.push({
+                    notes: chord,
+                    time: i * 4,
+                    duration: '1m', // Whole measure
+                    velocity: 0.4
+                });
+            });
+
+            return section;
+        }
+
+        /**
+         * Generate main verse section - steady rhythm and melody
+         * @param {Object} params - Musical parameters
+         * @returns {Object} Section data
+         */
+        function generateMainVerse(params) {
+            console.log('🎵 Generating Main Verse...');
+
+            const duration = 16; // 16 bars
+            const section = {
+                name: 'verse',
+                duration: duration,
+                intensity: 0.6,
+                melodyNotes: [],
+                bassNotes: [],
+                chords: [],
+                drumPattern: 'steady'
+            };
+
+            // Generate verse melody - more active than intro
+            const verseMelody = generateMelody(params.scale, 'medium', 32);
+
+            verseMelody.forEach((note, i) => {
+                if (Math.random() > 0.2) { // 80% note density
+                    section.melodyNotes.push({
+                        note: note,
+                        time: i * 0.5, // Quarter notes
+                        duration: '4n',
+                        velocity: 0.6 + Math.random() * 0.2
+                    });
+                }
+            });
+
+            // Verse bass - walking pattern
+            params.bassNotes.slice(0, 8).forEach((note, i) => {
+                section.bassNotes.push({
+                    note: note,
+                    time: i * 2,
+                    duration: '4n',
+                    velocity: 0.7
+                });
+            });
+
+            // Verse chords - full progression
+            params.chords.forEach((chord, i) => {
+                section.chords.push({
+                    notes: chord,
+                    time: i * 4,
+                    duration: '2n',
+                    velocity: 0.6
+                });
+            });
+
+            return section;
+        }
+
+        /**
+         * Generate pre-chorus section - building tension
+         * @param {Object} params - Musical parameters
+         * @returns {Object} Section data
+         */
+        function generatePreChorus(params) {
+            console.log('🎵 Generating Pre-Chorus...');
+
+            const duration = 8; // 8 bars
+            const section = {
+                name: 'pre-chorus',
+                duration: duration,
+                intensity: 0.75,
+                melodyNotes: [],
+                bassNotes: [],
+                chords: [],
+                drumPattern: 'building'
+            };
+
+            // Pre-chorus melody - higher register, building energy
+            const preChorusScale = params.scale.filter((_, i) => i % 7 >= 3); // Higher notes
+            const preChorusMelody = generateMelody(preChorusScale, 'high', 24);
+
+            preChorusMelody.forEach((note, i) => {
+                section.melodyNotes.push({
+                    note: note,
+                    time: i * 0.33, // Faster rhythm
+                    duration: '8n',
+                    velocity: 0.7 + Math.random() * 0.2
+                });
+            });
+
+            // Pre-chorus bass - more driving
+            params.bassNotes.slice(0, 4).forEach((note, i) => {
+                section.bassNotes.push({
+                    note: note,
+                    time: i * 2,
+                    duration: '8n',
+                    velocity: 0.8
+                });
+                // Add extra bass hits for energy
+                section.bassNotes.push({
+                    note: note,
+                    time: i * 2 + 1,
+                    duration: '16n',
+                    velocity: 0.6
+                });
+            });
+
+            // Pre-chorus chords - shorter, punchier
+            params.chords.slice(0, 4).forEach((chord, i) => {
+                section.chords.push({
+                    notes: chord,
+                    time: i * 2,
+                    duration: '4n',
+                    velocity: 0.7
+                });
+            });
+
+            return section;
+        }
+
+        /**
+         * Generate chorus section - peak energy and catchiest melody
+         * @param {Object} params - Musical parameters
+         * @returns {Object} Section data
+         */
+        function generateChorus(params) {
+            console.log('🎵 Generating Chorus...');
+
+            const duration = 16; // 16 bars
+            const section = {
+                name: 'chorus',
+                duration: duration,
+                intensity: 1.0,
+                melodyNotes: [],
+                bassNotes: [],
+                chords: [],
+                drumPattern: 'full'
+            };
+
+            // Chorus melody - catchy, repetitive, high energy
+            const chorusScale = params.scale;
+            const chorusHook = generateMelody(chorusScale, 'high', 16);
+
+            // Repeat the hook twice for catchiness
+            for (let repeat = 0; repeat < 2; repeat++) {
+                chorusHook.forEach((note, i) => {
+                    section.melodyNotes.push({
+                        note: note,
+                        time: (repeat * 8) + (i * 0.5),
+                        duration: '8n',
+                        velocity: 0.8 + Math.random() * 0.2
+                    });
+                });
+            }
+
+            // Chorus bass - driving, powerful
+            params.bassNotes.forEach((note, i) => {
+                section.bassNotes.push({
+                    note: note,
+                    time: i * 1,
+                    duration: '8n',
+                    velocity: 0.9
+                });
+            });
+
+            // Chorus chords - full and rich
+            params.chords.forEach((chord, i) => {
+                section.chords.push({
+                    notes: chord,
+                    time: i * 4,
+                    duration: '2n',
+                    velocity: 0.8
+                });
+            });
+
+            return section;
+        }
+
+        /**
+         * Generate bridge section - contrasting section for variety
+         * @param {Object} params - Musical parameters
+         * @returns {Object} Section data
+         */
+        function generateBridge(params) {
+            console.log('🎵 Generating Bridge...');
+
+            const duration = 8; // 8 bars
+            const section = {
+                name: 'bridge',
+                duration: duration,
+                intensity: 0.7,
+                melodyNotes: [],
+                bassNotes: [],
+                chords: [],
+                drumPattern: 'varied'
+            };
+
+            // Bridge melody - different pattern, creates contrast
+            const bridgeScale = params.scale.slice().reverse(); // Reverse scale for variety
+            const bridgeMelody = generateMelody(bridgeScale, 'medium', 20);
+
+            bridgeMelody.forEach((note, i) => {
+                if (i % 3 !== 0) { // Syncopated rhythm
+                    section.melodyNotes.push({
+                        note: note,
+                        time: i * 0.4,
+                        duration: '8n',
+                        velocity: 0.65 + Math.random() * 0.15
+                    });
+                }
+            });
+
+            // Bridge bass - different rhythm pattern
+            params.bassNotes.slice(2, 6).forEach((note, i) => {
+                section.bassNotes.push({
+                    note: note,
+                    time: i * 2,
+                    duration: '4n',
+                    velocity: 0.7
+                });
+            });
+
+            // Bridge chords - altered progression
+            const bridgeChords = params.chords.slice(1).concat([params.chords[0]]); // Rotate chords
+            bridgeChords.slice(0, 4).forEach((chord, i) => {
+                section.chords.push({
+                    notes: chord,
+                    time: i * 2,
+                    duration: '2n',
+                    velocity: 0.65
+                });
+            });
+
+            return section;
+        }
+
+        /**
+         * Generate outro section - winding down, ending the song
+         * @param {Object} params - Musical parameters
+         * @returns {Object} Section data
+         */
+        function generateOutro(params) {
+            console.log('🎵 Generating Outro...');
+
+            const duration = 8; // 8 bars
+            const section = {
+                name: 'outro',
+                duration: duration,
+                intensity: 0.3,
+                melodyNotes: [],
+                bassNotes: [],
+                chords: [],
+                drumPattern: 'fadeout'
+            };
+
+            // Outro melody - slower, fading
+            const outroScale = params.scale.slice(0, 6);
+            const outroMelody = generateMelody(outroScale, 'low', 8);
+
+            outroMelody.forEach((note, i) => {
+                const fadeVelocity = 0.6 - (i * 0.05); // Gradual fade
+                if (Math.random() > 0.3 && fadeVelocity > 0.2) {
+                    section.melodyNotes.push({
+                        note: note,
+                        time: i * 1,
+                        duration: '2n',
+                        velocity: Math.max(0.2, fadeVelocity)
+                    });
+                }
+            });
+
+            // Outro bass - sparse, ending on root
+            params.chords.slice(0, 2).forEach((chord, i) => {
+                const rootNote = chord[0].replace(/[0-9]/g, '') + '2';
+                section.bassNotes.push({
+                    note: rootNote,
+                    time: i * 4,
+                    duration: '1n',
+                    velocity: 0.5 - (i * 0.1)
+                });
+            });
+
+            // Outro chords - resolving to home
+            section.chords.push({
+                notes: params.chords[0],
+                time: 0,
+                duration: '1m',
+                velocity: 0.4
+            });
+            section.chords.push({
+                notes: params.chords[0],
+                time: 4,
+                duration: '1m',
+                velocity: 0.25
+            });
+
+            return section;
+        }
+
+        /**
+         * Combine song sections into complete arrangement
+         * Order: Intro → Verse → Pre-Chorus → Chorus → Verse → Chorus → Outro
+         * @param {Object} params - Musical parameters
+         * @returns {Array} Array of sections with absolute timing
+         */
+        function combineSongSections(params) {
+            console.log('🎼 Combining song sections...');
+
+            // Generate each section
+            const intro = generateIntro(params);
+            const verse1 = generateMainVerse(params);
+            const preChorus = generatePreChorus(params);
+            const chorus1 = generateChorus(params);
+            const verse2 = generateMainVerse(params); // Second verse
+            const chorus2 = generateChorus(params); // Second chorus
+            const outro = generateOutro(params);
+
+            // Arrange sections with cumulative timing
+            const arrangement = [];
+            let currentTime = 0;
+
+            const sections = [
+                { section: intro, name: 'Intro' },
+                { section: verse1, name: 'Verse 1' },
+                { section: preChorus, name: 'Pre-Chorus' },
+                { section: chorus1, name: 'Chorus 1' },
+                { section: verse2, name: 'Verse 2' },
+                { section: chorus2, name: 'Chorus 2' },
+                { section: outro, name: 'Outro' }
+            ];
+
+            sections.forEach(({ section, name }) => {
+                // Adjust all note times to absolute time
+                const adjustedSection = {
+                    ...section,
+                    name: name,
+                    startTime: currentTime,
+                    endTime: currentTime + section.duration,
+                    melodyNotes: section.melodyNotes.map(n => ({
+                        ...n,
+                        time: currentTime + n.time
+                    })),
+                    bassNotes: section.bassNotes.map(n => ({
+                        ...n,
+                        time: currentTime + n.time
+                    })),
+                    chords: section.chords.map(c => ({
+                        ...c,
+                        time: currentTime + c.time
+                    }))
+                };
+
+                arrangement.push(adjustedSection);
+                currentTime += section.duration;
+            });
+
+            console.log(`✅ Song structure created: ${currentTime} bars total`);
+            console.log('Section order:', arrangement.map(s => s.name).join(' → '));
+
+            return arrangement;
+        }
+
         // Generate a melodic scale from chord progression
         function generateScaleFromChords(chords) {
             const scaleNotes = new Set();
@@ -1438,7 +1861,207 @@
             return melody;
         }
 
+        /**
+         * Play music using sectioned arrangement (Electronic style)
+         * @param {Object} params - Musical parameters
+         */
+        async function playSectionedElectronicMusic(params) {
+            console.log('🎹 Creating Electronic style with sectioned arrangement...');
+
+            // Create drum synthesizers
+            const kick = new Tone.MembraneSynth({
+                pitchDecay: 0.05,
+                octaves: 10,
+                oscillator: { type: 'sine' },
+                envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4 },
+                volume: -6
+            }).connect(masterVolume);
+
+            const snare = new Tone.NoiseSynth({
+                noise: { type: 'white' },
+                envelope: { attack: 0.001, decay: 0.2, sustain: 0, release: 0.2 },
+                volume: -10
+            }).connect(masterVolume);
+
+            const hihat = new Tone.MetalSynth({
+                frequency: 200,
+                envelope: { attack: 0.001, decay: 0.1, release: 0.05 },
+                harmonicity: 5.1,
+                modulationIndex: 32,
+                resonance: 4000,
+                octaves: 1.5,
+                volume: -15
+            }).connect(masterVolume);
+
+            // Create effects
+            const chorus = new Tone.Chorus(4, 2.5, 0.5).start();
+            const delay = new Tone.FeedbackDelay('8n', 0.3);
+
+            // Create lead instrument (for melody)
+            const leadInstrument = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { type: 'triangle' },
+                envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 1 },
+                volume: -6
+            }).chain(delay, filter);
+
+            // Create chord instrument (pads)
+            const chordInstrument = new Tone.PolySynth(Tone.Synth, {
+                oscillator: {
+                    type: 'sine',
+                    count: 3,
+                    spread: 30
+                },
+                envelope: {
+                    attack: 1.5,
+                    decay: 0.8,
+                    sustain: 0.8,
+                    release: 3
+                },
+                volume: -18
+            }).chain(chorus, filter);
+
+            // Create bass instrument
+            const bassInstrument = new Tone.MonoSynth({
+                oscillator: { type: 'sawtooth' },
+                filter: { Q: 2, type: 'lowpass', rolloff: -24 },
+                envelope: { attack: 0.01, decay: 0.3, sustain: 0.4, release: 1.2 },
+                filterEnvelope: {
+                    attack: 0.01,
+                    decay: 0.15,
+                    sustain: 0.3,
+                    release: 0.8,
+                    baseFrequency: 50,
+                    octaves: 3
+                },
+                volume: 0
+            }).toDestination();
+
+            // Store instruments for cleanup
+            synthesizers.lead = leadInstrument;
+            synthesizers.chords = chordInstrument;
+            synthesizers.bass = bassInstrument;
+            synthesizers.kick = kick;
+            synthesizers.snare = snare;
+            synthesizers.hihat = hihat;
+            synthesizers.chorus = chorus;
+            synthesizers.delay = delay;
+
+            // Generate the complete song arrangement
+            const arrangement = combineSongSections(params);
+
+            // Setup gif spawning based on rhythm density
+            setupBeatSyncedGifs(params.rhythmDensity);
+
+            // Package instruments for scheduler
+            const instruments = {
+                lead: leadInstrument,
+                chords: chordInstrument,
+                bass: bassInstrument,
+                drums: { kick, snare, hihat }
+            };
+
+            // Schedule all sections
+            scheduleSectionedArrangement(arrangement, instruments);
+
+            // Calculate total song length and schedule end
+            const totalLength = arrangement[arrangement.length - 1].endTime;
+            console.log(`🎵 Total song length: ${totalLength} bars`);
+
+            // Update display to show first section
+            document.getElementById('currentSection').textContent = arrangement[0].name;
+        }
+
+        /**
+         * Schedule a complete song arrangement from sections
+         * @param {Array} arrangement - Array of sections with timing and notes
+         * @param {Object} instruments - Object containing all synthesizers
+         */
+        function scheduleSectionedArrangement(arrangement, instruments) {
+            console.log('📅 Scheduling sectioned arrangement...');
+
+            arrangement.forEach((section) => {
+                console.log(`📍 Scheduling ${section.name} (${section.startTime}s - ${section.endTime}s)`);
+
+                // Schedule section display update
+                Tone.Transport.schedule((time) => {
+                    Tone.Draw.schedule(() => {
+                        document.getElementById('currentSection').textContent = section.name;
+                    }, time);
+                }, section.startTime);
+
+                // Schedule melody notes
+                section.melodyNotes.forEach(({ note, time, duration, velocity }) => {
+                    Tone.Transport.schedule((schedTime) => {
+                        instruments.lead.triggerAttackRelease(note, duration, schedTime, velocity);
+                    }, time);
+                });
+
+                // Schedule bass notes
+                section.bassNotes.forEach(({ note, time, duration, velocity }) => {
+                    Tone.Transport.schedule((schedTime) => {
+                        instruments.bass.triggerAttackRelease(note, duration, schedTime, velocity);
+                    }, time);
+                });
+
+                // Schedule chords
+                section.chords.forEach(({ notes, time, duration, velocity }) => {
+                    Tone.Transport.schedule((schedTime) => {
+                        instruments.chords.triggerAttackRelease(notes, duration, schedTime, velocity);
+                    }, time);
+                });
+
+                // Schedule drum pattern changes based on section intensity
+                if (instruments.drums) {
+                    const { kick, snare, hihat } = instruments.drums;
+
+                    // Kick pattern based on section
+                    const kickInterval = section.drumPattern === 'minimal' ? 4 :
+                                       section.drumPattern === 'fadeout' ? 4 :
+                                       section.drumPattern === 'building' ? 1 :
+                                       1; // Default 4-on-floor
+
+                    for (let beat = section.startTime; beat < section.endTime; beat += kickInterval) {
+                        Tone.Transport.schedule((time) => {
+                            kick.triggerAttackRelease('C1', '8n', time, section.intensity);
+                            Tone.Draw.schedule(() => spawnVibeGif(), time);
+                        }, beat);
+                    }
+
+                    // Snare on 2 and 4 (unless minimal)
+                    if (section.drumPattern !== 'minimal') {
+                        for (let beat = section.startTime + 1; beat < section.endTime; beat += 2) {
+                            Tone.Transport.schedule((time) => {
+                                snare.triggerAttackRelease('8n', time, section.intensity * 0.8);
+                            }, beat);
+                        }
+                    }
+
+                    // Hi-hats based on intensity
+                    const hihatInterval = section.intensity > 0.7 ? 0.5 : 1;
+                    for (let beat = section.startTime; beat < section.endTime; beat += hihatInterval) {
+                        if (section.drumPattern !== 'fadeout' || beat < section.endTime - 2) {
+                            Tone.Transport.schedule((time) => {
+                                hihat.triggerAttackRelease('32n', time, section.intensity * 0.6);
+                            }, beat);
+                        }
+                    }
+                }
+            });
+
+            console.log('✅ All sections scheduled!');
+        }
+
         async function playSynthesizedMusic(params) {
+            // Check if user wants sectioned arrangement (for electronic style)
+            const useSectionedArrangement = selectedStyle === 'electronic';
+
+            if (useSectionedArrangement) {
+                console.log('🎼 Using sectioned arrangement for electronic music...');
+                await playSectionedElectronicMusic(params);
+                return;
+            }
+
+            // Otherwise use original continuous generation
             // Create drum synthesizers - connect to master volume
             const kick = new Tone.MembraneSynth({
                 pitchDecay: 0.05,

@@ -962,7 +962,14 @@
                 rolloff: -12
             }).connect(reverb);
 
-            await playSynthesizedMusic(params);
+            // Check if we should use loop-based or synthesized music
+            const useLoops = selectedMode === 'organic' && await checkSamplesAvailable();
+
+            if (useLoops) {
+                await playLoopBasedMusic(params);
+            } else {
+                await playSynthesizedMusic(params);
+            }
 
             Tone.Transport.start();
 
@@ -970,8 +977,110 @@
             document.getElementById('playbackControls').style.display = 'block';
             document.getElementById('sectionDisplay').style.display = 'block';
 
-            const modeLabel = selectedMode === 'organic' ? 'ORGANIC' : 'SYNTHETIC';
+            const modeLabel = useLoops ? 'ORGANIC (Loops)' : selectedMode === 'organic' ? 'ORGANIC (Samples)' : 'SYNTHETIC';
             showStatus(`Playing ${modeLabel} ${selectedStyle.toUpperCase()} ${selectedMood} music - ${params.tempo} BPM`, 'success');
+        }
+
+        // Check if sample manifest exists
+        async function checkSamplesAvailable() {
+            try {
+                const response = await fetch('samples/manifest.json');
+                if (response.ok) {
+                    const manifest = await response.json();
+                    // Check if we have at least some samples
+                    return (manifest.drums && manifest.drums.length > 0) ||
+                           (manifest.bass && manifest.bass.length > 0) ||
+                           (manifest.melody && manifest.melody.length > 0);
+                }
+                return false;
+            } catch (error) {
+                console.log('No sample manifest found, using sampler mode');
+                return false;
+            }
+        }
+
+        // Play music using loops from Freesound samples
+        async function playLoopBasedMusic(params) {
+            console.log('🎵 Loading loop-based music from samples...');
+
+            try {
+                // Load manifest
+                const response = await fetch('samples/manifest.json');
+                const manifest = await response.json();
+
+                // Pick random samples from each category
+                const pickRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+                // Load drum loop
+                if (manifest.drums && manifest.drums.length > 0) {
+                    const drumLoops = manifest.drums.filter(s => s.tag === 'drum-loop');
+                    if (drumLoops.length > 0) {
+                        const drumSample = pickRandom(drumLoops);
+                        const drumPlayer = new Tone.Player({
+                            url: `samples/drums/${drumSample.file}`,
+                            loop: true,
+                            volume: -6,
+                            onload: () => console.log('✅ Drum loop loaded:', drumSample.file)
+                        }).connect(masterVolume);
+
+                        synthParts.drums = drumPlayer;
+                        drumPlayer.start(0);
+                    }
+                }
+
+                // Load bass loop
+                if (manifest.bass && manifest.bass.length > 0) {
+                    const bassLoops = manifest.bass.filter(s => s.tag === 'bass-loop');
+                    if (bassLoops.length > 0) {
+                        const bassSample = pickRandom(bassLoops);
+                        const bassPlayer = new Tone.Player({
+                            url: `samples/bass/${bassSample.file}`,
+                            loop: true,
+                            volume: -3,
+                            onload: () => console.log('✅ Bass loop loaded:', bassSample.file)
+                        }).connect(masterVolume);
+
+                        synthParts.bass = bassPlayer;
+                        bassPlayer.start(0);
+                    }
+                }
+
+                // Load melody loop
+                if (manifest.melody && manifest.melody.length > 0) {
+                    const melodySample = pickRandom(manifest.melody);
+                    const melodyPlayer = new Tone.Player({
+                        url: `samples/melody/${melodySample.file}`,
+                        loop: true,
+                        volume: -6,
+                        onload: () => console.log('✅ Melody loop loaded:', melodySample.file)
+                    }).connect(masterVolume);
+
+                    synthParts.melody = melodyPlayer;
+                    melodyPlayer.start(0);
+                }
+
+                // Load vocal chop (optional, 50% chance)
+                if (manifest.vocals && manifest.vocals.length > 0 && Math.random() > 0.5) {
+                    const vocalSample = pickRandom(manifest.vocals);
+                    const vocalPlayer = new Tone.Player({
+                        url: `samples/vocals/${vocalSample.file}`,
+                        loop: true,
+                        volume: -8,
+                        onload: () => console.log('✅ Vocal loop loaded:', vocalSample.file)
+                    }).connect(masterVolume);
+
+                    synthParts.vocals = vocalPlayer;
+                    vocalPlayer.start(0);
+                }
+
+                console.log('🎵 All loops loaded and playing!');
+
+            } catch (error) {
+                console.error('❌ Error loading loops:', error);
+                showStatus('Error loading samples, falling back to synthesizer', 'error');
+                // Fall back to synthesized music
+                await playSynthesizedMusic(params);
+            }
         }
 
         async function playSynthesizedMusic(params) {
@@ -1653,11 +1762,15 @@
         }
 
         function stopMusic() {
-            // Stop and dispose synthesizer parts
+            // Stop and dispose synthesizer parts (handles both Parts and Players)
             for (const partName in synthParts) {
                 if (synthParts[partName]) {
-                    synthParts[partName].stop();
-                    synthParts[partName].dispose();
+                    try {
+                        synthParts[partName].stop();
+                        synthParts[partName].dispose();
+                    } catch (e) {
+                        console.warn(`Error stopping ${partName}:`, e);
+                    }
                     synthParts[partName] = null;
                 }
             }
@@ -1665,7 +1778,11 @@
             // Dispose all synthesizers
             for (const synthName in synthesizers) {
                 if (synthesizers[synthName]) {
-                    synthesizers[synthName].dispose();
+                    try {
+                        synthesizers[synthName].dispose();
+                    } catch (e) {
+                        console.warn(`Error disposing ${synthName}:`, e);
+                    }
                     synthesizers[synthName] = null;
                 }
             }

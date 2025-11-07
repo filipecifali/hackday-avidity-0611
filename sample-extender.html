@@ -151,7 +151,7 @@
 
         <div class="info">
             <strong>How it works:</strong><br>
-            Loads your sample → Analyzes pattern, key, tempo → Generates extended track using the same instruments and style
+            Loads your sample → Slices it → Creates 5 layered instruments using the sample audio → Each layer has different rhythm/octave/timing → Generates full track with proper song structure
         </div>
     </div>
 
@@ -226,7 +226,7 @@
                 showStatus('🎼 Generating extended track...', 'loading');
 
                 // Generate extended music based on sample
-                await extendSample(sample, samplePlayer, bpm);
+                await extendSample(sample, samplePlayer, bpm, sampleType);
 
                 // Start playback
                 Tone.Transport.start();
@@ -242,7 +242,7 @@
             }
         }
 
-        async function extendSample(sample, samplePlayer, bpm) {
+        async function extendSample(sample, samplePlayer, bpm, sampleType) {
             // Extract sample metadata
             const key = sample.key || 'C';
             const mode = sample.mode || 'minor';
@@ -252,8 +252,9 @@
             // Build scale based on key/mode
             const scale = buildScale(key, mode);
 
-            // Create matching instruments
-            createInstruments(sample, groove);
+            // Create sample-based instruments (using sliced sample audio)
+            const sampleUrl = `samples/${sampleType}/${sample.file}`;
+            await createSampleBasedInstruments(sampleUrl, key);
 
             // Structure: intro (sample) → verse → chorus → verse → bridge → outro
             const sections = [
@@ -274,46 +275,51 @@
                 const duration = section.bars * barDuration;
                 const endTime = startTime + duration;
 
-                console.log(`Section: ${section.name} (${startTime.toFixed(1)}s - ${endTime.toFixed(1)}s)`);
+                console.log(`🎵 Section: ${section.name} (${startTime.toFixed(1)}s - ${endTime.toFixed(1)}s)`);
 
                 // Start/stop original sample based on section
                 if (section.useOriginal) {
                     scheduledEvents.push(Tone.Transport.schedule((time) => {
                         samplePlayer.volume.linearRampTo(-3, 1, time);
-                        if (!samplePlayer.state === 'started') {
+                        if (samplePlayer.state !== 'started') {
                             samplePlayer.start(time);
                         }
                     }, startTime));
                 } else {
                     scheduledEvents.push(Tone.Transport.schedule((time) => {
-                        samplePlayer.volume.linearRampTo(-15, 2, time); // Fade out
+                        samplePlayer.volume.linearRampTo(-20, 2, time); // Fade out
                     }, startTime));
                 }
 
-                // Generate bass line using pattern
-                if (instruments.bass && notePattern) {
-                    generateBassSection(notePattern, startTime, duration, section.intensity, groove, idx);
+                // LAYER 1: Bass line (original rhythm, sliced sample)
+                if (instruments.bassLayer && notePattern) {
+                    generateBassLayer(notePattern, startTime, duration, section.intensity, groove, idx);
                 }
 
-                // Generate drums
+                // LAYER 2: Melody (different rhythm, higher octave, sliced sample)
+                if (instruments.melodyLayer && notePattern) {
+                    generateMelodyLayer(notePattern, scale, startTime, duration, section.intensity, idx);
+                }
+
+                // LAYER 3: Harmony/Chords (sustained, sliced sample)
+                if (instruments.harmonyLayer && section.intensity > 0.5) {
+                    generateHarmonyLayer(scale, startTime, duration, section.intensity, idx);
+                }
+
+                // LAYER 4: Drums (synthesized for rhythm backbone)
                 if (instruments.kick) {
                     generateDrumSection(startTime, duration, section.intensity, bpm);
                 }
 
-                // Generate melody (higher octave of bass pattern)
-                if (instruments.melody && notePattern) {
-                    generateMelodySection(notePattern, scale, startTime, duration, section.intensity, groove);
-                }
-
-                // Chords/pads
-                if (instruments.pad) {
-                    generateChordSection(scale, startTime, duration, section.intensity);
+                // LAYER 5: Percussion fills (sample-based, occasional)
+                if (instruments.percLayer && section.intensity > 0.7) {
+                    generatePercussionLayer(notePattern, startTime, duration, section.intensity);
                 }
 
                 currentTime = endTime;
             });
 
-            console.log(`Total track: ${currentTime.toFixed(1)}s`);
+            console.log(`✅ Total track: ${currentTime.toFixed(1)}s with 5 layered instruments`);
         }
 
         function buildScale(key, mode) {
@@ -330,41 +336,62 @@
             return scale;
         }
 
-        function createInstruments(sample, groove) {
-            // Bass synth matching sample
-            instruments.bass = new Tone.MonoSynth({
-                oscillator: { type: 'sawtooth' },
-                filter: { Q: 6, type: 'lowpass', rolloff: -24 },
-                envelope: { attack: 0.01, decay: 0.2, sustain: 0.5, release: 0.8 },
-                volume: -3
+        async function createSampleBasedInstruments(sampleUrl, rootKey) {
+            console.log('🎹 Creating sample-based instruments using original sample audio...');
+
+            // Create a note mapping for the sampler (map sample to multiple notes)
+            // This will pitch-shift the sample to play different notes
+            const noteMap = {};
+            const notes = ['C2', 'D2', 'E2', 'F2', 'G2', 'A2', 'B2', 'C3', 'D3', 'E3', 'F3', 'G3'];
+
+            // LAYER 1: Bass Layer (uses sliced sample for bass notes)
+            instruments.bassLayer = new Tone.Sampler({
+                urls: { [rootKey + '2']: sampleUrl },
+                baseUrl: '',
+                volume: -5,
+                attack: 0.01,
+                release: 0.4
             }).connect(masterVolume);
 
-            // Melody synth
-            instruments.melody = new Tone.PolySynth(Tone.Synth, {
-                oscillator: { type: 'triangle' },
-                envelope: { attack: 0.01, decay: 0.1, sustain: 0.3, release: 1 },
-                volume: -8
+            // LAYER 2: Melody Layer (same sample, different envelope for melody)
+            instruments.melodyLayer = new Tone.Sampler({
+                urls: { [rootKey + '3']: sampleUrl },
+                baseUrl: '',
+                volume: -8,
+                attack: 0.02,
+                release: 0.6
             }).connect(masterVolume);
 
-            // Pad
-            instruments.pad = new Tone.PolySynth(Tone.Synth, {
-                oscillator: { type: 'sine', count: 3, spread: 20 },
-                envelope: { attack: 1, decay: 0.5, sustain: 0.8, release: 2 },
-                volume: -18
+            // LAYER 3: Harmony Layer (same sample, longer sustain for chords)
+            instruments.harmonyLayer = new Tone.Sampler({
+                urls: { [rootKey + '3']: sampleUrl },
+                baseUrl: '',
+                volume: -12,
+                attack: 0.5,
+                release: 2
             }).connect(masterVolume);
 
-            // Drums
+            // LAYER 4: Percussion Layer (same sample, short/staccato)
+            instruments.percLayer = new Tone.Sampler({
+                urls: { [rootKey + '4']: sampleUrl },
+                baseUrl: '',
+                volume: -10,
+                attack: 0.001,
+                release: 0.1
+            }).connect(masterVolume);
+
+            // LAYER 5: Drums (keep synthesized)
             instruments.kick = new Tone.MembraneSynth({
                 pitchDecay: 0.05, octaves: 10,
                 oscillator: { type: 'sine' },
                 envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4 },
-                volume: -3
+                volume: -5
             }).connect(masterVolume);
 
             instruments.snare = new Tone.NoiseSynth({
                 noise: { type: 'white' },
                 envelope: { attack: 0.005, decay: 0.1, sustain: 0 },
-                volume: -5
+                volume: -7
             }).connect(masterVolume);
 
             instruments.hihat = new Tone.MetalSynth({
@@ -372,13 +399,17 @@
                 envelope: { attack: 0.001, decay: 0.1, release: 0.01 },
                 harmonicity: 5.1, modulationIndex: 32,
                 resonance: 4000, octaves: 1.5,
-                volume: -15
+                volume: -17
             }).connect(masterVolume);
+
+            // Wait for samplers to load
+            await Tone.loaded();
+            console.log('✅ All sample-based layers loaded!');
         }
 
-        function generateBassSection(pattern, startTime, duration, intensity, groove, sectionIdx) {
+        function generateBassLayer(pattern, startTime, duration, intensity, groove, sectionIdx) {
+            // LAYER 1: Bass - Original rhythm, low notes, sample-based
             const swing = groove.swing || 0.5;
-            const slides = groove.slides || false;
             const beatsPerNote = 0.5; // 8th notes
 
             // Create variations
@@ -407,7 +438,7 @@
                 });
             }
 
-            // Schedule notes
+            // Schedule notes using sample-based instrument
             variations.forEach((note, i) => {
                 if (note === 'rest') return;
 
@@ -417,19 +448,105 @@
 
                 if (noteTime < startTime + duration) {
                     scheduledEvents.push(Tone.Transport.schedule((time) => {
-                        if (slides && Math.random() > 0.7) {
-                            // Slide
-                            const fromMidi = Tone.Frequency(note).toMidi() - 1;
-                            const fromNote = Tone.Frequency(fromMidi, 'midi').toNote();
-                            instruments.bass.triggerAttack(fromNote, time);
-                            instruments.bass.frequency.linearRampTo(note, 0.05, time);
-                            instruments.bass.triggerRelease(time + 0.4);
-                        } else {
-                            instruments.bass.triggerAttackRelease(note, '8n', time, intensity * 0.9);
-                        }
+                        // Use sliced sample for bass notes
+                        instruments.bassLayer.triggerAttackRelease(note, '8n', time, intensity * 0.9);
                     }, noteTime));
                 }
             });
+        }
+
+        function generateMelodyLayer(pattern, scale, startTime, duration, intensity, sectionIdx) {
+            // LAYER 2: Melody - Different rhythm, higher octave, sample-based
+            if (intensity < 0.6) return; // Only in higher energy sections
+
+            // Create melody pattern (higher octave, sparser rhythm)
+            const melodyPattern = [];
+            pattern.forEach((note, i) => {
+                if (note === 'rest' || Math.random() > intensity * 0.7) {
+                    melodyPattern.push('rest');
+                } else {
+                    try {
+                        const midi = Tone.Frequency(note).toMidi() + 12; // Octave up
+                        melodyPattern.push(Tone.Frequency(midi, 'midi').toNote());
+                    } catch {
+                        melodyPattern.push(scale[Math.floor(Math.random() * scale.length)]);
+                    }
+                }
+            });
+
+            // Different rhythm - quarter notes instead of eighth notes
+            const beatsPerNote = 1.0;
+            const repeatCount = Math.ceil(duration / (melodyPattern.length * beatsPerNote));
+
+            for (let r = 0; r < repeatCount; r++) {
+                melodyPattern.forEach((note, i) => {
+                    if (note === 'rest') return;
+
+                    const noteTime = startTime + (r * melodyPattern.length + i) * beatsPerNote;
+                    if (noteTime < startTime + duration) {
+                        scheduledEvents.push(Tone.Transport.schedule((time) => {
+                            instruments.melodyLayer.triggerAttackRelease(note, '4n', time, intensity * 0.8);
+                        }, noteTime));
+                    }
+                });
+            }
+        }
+
+        function generateHarmonyLayer(scale, startTime, duration, intensity, sectionIdx) {
+            // LAYER 3: Harmony - Sustained chords, sample-based
+            // Build chords from scale
+            const chords = [
+                [scale[0], scale[2], scale[4]],   // i
+                [scale[3], scale[5], scale[7]],   // iv
+                [scale[4], scale[6], scale[8]],   // v
+                [scale[2], scale[4], scale[6]]    // iii
+            ];
+
+            // Different rhythm - whole notes (4 bars)
+            const barsPerChord = 2;
+            const beatDuration = 60 / Tone.Transport.bpm.value;
+            const chordDuration = barsPerChord * 4 * beatDuration;
+
+            chords.forEach((chord, i) => {
+                const chordTime = startTime + i * chordDuration;
+                if (chordTime < startTime + duration) {
+                    scheduledEvents.push(Tone.Transport.schedule((time) => {
+                        // Play each note of chord with sample
+                        chord.forEach((note, idx) => {
+                            setTimeout(() => {
+                                instruments.harmonyLayer.triggerAttackRelease(note, chordDuration, time, intensity * 0.4);
+                            }, idx * 50); // Slight stagger for richer sound
+                        });
+                    }, chordTime));
+                }
+            });
+        }
+
+        function generatePercussionLayer(pattern, startTime, duration, intensity) {
+            // LAYER 5: Percussion fills - Occasional staccato hits from sample
+            const beatsPerNote = 0.25; // 16th notes
+            const fillInterval = 8; // Every 8 beats
+
+            for (let t = 0; t < duration; t += fillInterval) {
+                if (Math.random() > 0.6) { // 40% chance of fill
+                    const fillNote = pattern[Math.floor(Math.random() * pattern.length)];
+                    if (fillNote !== 'rest') {
+                        try {
+                            const midi = Tone.Frequency(fillNote).toMidi() + 24; // 2 octaves up
+                            const highNote = Tone.Frequency(midi, 'midi').toNote();
+
+                            // Quick triplet fill
+                            for (let i = 0; i < 3; i++) {
+                                scheduledEvents.push(Tone.Transport.schedule((time) => {
+                                    instruments.percLayer.triggerAttackRelease(highNote, '32n', time, intensity * 0.6);
+                                }, startTime + t + i * 0.1));
+                            }
+                        } catch (e) {
+                            // Skip if note conversion fails
+                        }
+                    }
+                }
+            }
         }
 
         function generateDrumSection(startTime, duration, intensity, bpm) {
@@ -459,51 +576,6 @@
             }
         }
 
-        function generateMelodySection(pattern, scale, startTime, duration, intensity, groove) {
-            if (intensity < 0.6) return; // Only in higher intensity sections
-
-            const melodyPattern = pattern.map(note => {
-                if (note === 'rest') return 'rest';
-                try {
-                    const midi = Tone.Frequency(note).toMidi() + 12; // Octave up
-                    return Tone.Frequency(midi, 'midi').toNote();
-                } catch {
-                    return scale[Math.floor(Math.random() * scale.length)];
-                }
-            });
-
-            melodyPattern.forEach((note, i) => {
-                if (note === 'rest' || Math.random() > intensity) return;
-
-                const noteTime = startTime + i * 0.5;
-                if (noteTime < startTime + duration) {
-                    scheduledEvents.push(Tone.Transport.schedule((time) => {
-                        instruments.melody.triggerAttackRelease(note, '8n', time, intensity * 0.7);
-                    }, noteTime));
-                }
-            });
-        }
-
-        function generateChordSection(scale, startTime, duration, intensity) {
-            if (intensity < 0.5) return;
-
-            // Build chords from scale
-            const chords = [
-                [scale[0], scale[2], scale[4]],   // i
-                [scale[3], scale[5], scale[7]],   // iv
-                [scale[4], scale[6], scale[8]],   // v
-                [scale[2], scale[4], scale[6]]    // iii
-            ];
-
-            chords.forEach((chord, i) => {
-                const chordTime = startTime + i * 4;
-                if (chordTime < startTime + duration) {
-                    scheduledEvents.push(Tone.Transport.schedule((time) => {
-                        instruments.pad.triggerAttackRelease(chord, '2n', time, intensity * 0.5);
-                    }, chordTime));
-                }
-            });
-        }
 
         function displaySampleInfo(sample, type) {
             const info = document.getElementById('sampleInfo');

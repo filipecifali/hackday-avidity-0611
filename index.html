@@ -1011,6 +1011,9 @@
                 // Pick random samples from each category
                 const pickRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
+                // Create players for all samples (but don't start yet)
+                const players = [];
+
                 // Load drum loop
                 if (manifest.drums && manifest.drums.length > 0) {
                     const drumLoops = manifest.drums.filter(s => s.tag === 'drum-loop');
@@ -1024,7 +1027,7 @@
                         }).connect(masterVolume);
 
                         synthParts.drums = drumPlayer;
-                        drumPlayer.start(0);
+                        players.push(drumPlayer);
                     }
                 }
 
@@ -1041,7 +1044,7 @@
                         }).connect(masterVolume);
 
                         synthParts.bass = bassPlayer;
-                        bassPlayer.start(0);
+                        players.push(bassPlayer);
                     }
                 }
 
@@ -1056,7 +1059,7 @@
                     }).connect(masterVolume);
 
                     synthParts.melody = melodyPlayer;
-                    melodyPlayer.start(0);
+                    players.push(melodyPlayer);
                 }
 
                 // Load vocal chop (optional, 50% chance)
@@ -1070,17 +1073,140 @@
                     }).connect(masterVolume);
 
                     synthParts.vocals = vocalPlayer;
-                    vocalPlayer.start(0);
+                    players.push(vocalPlayer);
                 }
 
-                console.log('🎵 All loops loaded and playing!');
+                // Wait for all samples to load
+                console.log('⏳ Waiting for all samples to load...');
+                await Tone.loaded();
+                console.log('✅ All samples loaded!');
+
+                // Now start all players
+                players.forEach(player => player.start(0));
+
+                console.log('🎵 Sample loops playing!');
+                console.log('🎹 Now generating complementary music on top...');
+
+                // Generate complementary synthesized parts to build on the samples
+                await generateComplementaryParts(params, manifest);
+
+                console.log('✅ Full track playing (samples + generated)!');
 
             } catch (error) {
                 console.error('❌ Error loading loops:', error);
-                showStatus('Error loading samples, falling back to synthesizer', 'error');
-                // Fall back to synthesized music
-                await playSynthesizedMusic(params);
+                showStatus('Error loading samples, using synth mode instead', 'error');
             }
+        }
+
+        // Generate drums, melody, and chords to complement the sample loops
+        async function generateComplementaryParts(params, manifest) {
+            // Create drum synthesizers if we don't have drum samples
+            const hasDrumSamples = manifest.drums && manifest.drums.length > 0;
+
+            if (!hasDrumSamples) {
+                console.log('🥁 Adding generated drums...');
+                const kick = new Tone.MembraneSynth({
+                    pitchDecay: 0.05,
+                    octaves: 10,
+                    oscillator: { type: 'sine' },
+                    envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4 },
+                    volume: -6
+                }).connect(masterVolume);
+
+                const snare = new Tone.NoiseSynth({
+                    noise: { type: 'white' },
+                    envelope: { attack: 0.005, decay: 0.1, sustain: 0 },
+                    volume: -8
+                }).connect(masterVolume);
+
+                const hihat = new Tone.MetalSynth({
+                    frequency: 200,
+                    envelope: { attack: 0.001, decay: 0.1, release: 0.01 },
+                    harmonicity: 5.1,
+                    modulationIndex: 32,
+                    resonance: 4000,
+                    octaves: 1.5,
+                    volume: -18
+                }).connect(masterVolume);
+
+                // Create drum patterns synced to tempo
+                const kickInterval = params.rhythmDensity === 'high' ? '4n' : '2n';
+                const kickPattern = new Tone.Loop((time) => {
+                    kick.triggerAttackRelease('C1', '8n', time);
+                    // Spawn gif on beat
+                    Tone.Draw.schedule(() => spawnVibeGif(), time);
+                }, kickInterval);
+
+                const snarePattern = new Tone.Loop((time) => {
+                    snare.triggerAttackRelease('8n', time);
+                }, '2n');
+
+                const hihatPattern = new Tone.Loop((time) => {
+                    hihat.triggerAttackRelease('32n', time);
+                }, params.rhythmDensity === 'high' ? '8n' : '4n');
+
+                kickPattern.start(0);
+                snarePattern.start('4n');
+                hihatPattern.start(0);
+
+                synthParts.kickPattern = kickPattern;
+                synthParts.snarePattern = snarePattern;
+                synthParts.hihatPattern = hihatPattern;
+            }
+
+            // Add melody if we don't have melody samples
+            const hasMelodySamples = manifest.melody && manifest.melody.length > 0;
+
+            if (!hasMelodySamples) {
+                console.log('🎼 Adding generated melody...');
+
+                // Create simple synth for melody
+                const melodySynth = new Tone.PolySynth(Tone.Synth, {
+                    oscillator: { type: 'triangle' },
+                    envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 1 },
+                    volume: -12
+                }).connect(masterVolume);
+
+                synthesizers.generatedMelody = melodySynth;
+
+                // Generate melody based on params
+                const melodySequence = generateMelody(params.scale, params.rhythmDensity, 16);
+                const noteDuration = params.rhythmDensity === 'high' ? '8n' : '4n';
+                const sequenceInterval = params.rhythmDensity === 'high' ? '8n' : '4n';
+
+                const melodyPart = new Tone.Part((time, note) => {
+                    if (note && Math.random() > 0.2) { // 80% chance to play (some rests)
+                        melodySynth.triggerAttackRelease(note, noteDuration, time, 0.6);
+                    }
+                }, melodySequence.map((note, i) => [i * Tone.Time(sequenceInterval).toSeconds(), note]));
+
+                melodyPart.loop = true;
+                melodyPart.loopEnd = melodySequence.length * Tone.Time(sequenceInterval).toSeconds();
+                melodyPart.start(0);
+
+                synthParts.generatedMelody = melodyPart;
+            }
+
+            // Add chords if we don't have enough harmonic content
+            console.log('🎹 Adding harmony chords...');
+
+            const chordSynth = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { type: 'sine' },
+                envelope: { attack: 0.3, decay: 0.5, sustain: 0.7, release: 2 },
+                volume: -20 // Very quiet background
+            }).connect(masterVolume);
+
+            synthesizers.generatedChords = chordSynth;
+
+            const chordPart = new Tone.Part((time, chord) => {
+                chordSynth.triggerAttackRelease(chord, '1n', time, 0.5);
+            }, params.chords.map((chord, i) => [i * 2, chord]));
+
+            chordPart.loop = true;
+            chordPart.loopEnd = params.chords.length * 2;
+            chordPart.start(0);
+
+            synthParts.generatedChords = chordPart;
         }
 
         async function playSynthesizedMusic(params) {

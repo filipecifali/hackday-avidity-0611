@@ -1,0 +1,28 @@
+{
+  "_instructions": "Replace 'your_file_name.mp3' with your actual downloaded file names. Delete this line when done.",
+  "_tip": "File extensions can be .mp3, .wav, or .ogg - whatever you downloaded!",
+
+  "drums": [
+    { "file": "drum_loop_1.mp3", "tag": "drum-loop", "duration": 4.0 },
+    { "file": "drum_loop_2.mp3", "tag": "drum-loop", "duration": 4.0 },
+    { "file": "drum_loop_3.mp3", "tag": "drum-loop", "duration": 4.0 },
+    { "file": "kick.wav", "tag": "kick", "duration": 0.5 },
+    { "file": "snare.wav", "tag": "snare", "duration": 0.5 }
+  ],
+
+  "bass": [
+    { "file": "bass_loop_1.mp3", "tag": "bass-loop", "duration": 4.0 },
+    { "file": "bass_loop_2.mp3", "tag": "bass-loop", "duration": 4.0 },
+    { "file": "bass_guitar.wav", "tag": "bass-guitar", "duration": 4.0 }
+  ],
+
+  "melody": [
+    { "file": "piano_loop_1.mp3", "tag": "piano-loop", "duration": 4.0 },
+    { "file": "guitar_loop_1.mp3", "tag": "guitar-loop", "duration": 4.0 },
+    { "file": "synth_loop_1.mp3", "tag": "synth-loop", "duration": 4.0 }
+  ],
+
+  "vocals": [
+    { "file": "vocal_chop_1.mp3", "tag": "vocal-chop", "duration": 2.0 }
+  ]
+}

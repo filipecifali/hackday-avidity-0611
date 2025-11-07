@@ -748,40 +748,105 @@
             return structures[energy];
         }
 
-        // Generate a melodic scale from chord progression
-        function generateScaleFromChords(chords) {
-            const scaleNotes = new Set();
+        // Generate a random electronic intro based on mood
+        async function generateElectronicIntro(params) {
+            return new Promise(async (resolve) => {
+                console.log('🎵 Generating electronic intro...');
 
-            // Extract all unique notes from the chord progression
-            chords.forEach(chord => {
-                chord.forEach(note => {
-                    const noteName = note.replace(/[0-9]/g, ''); // Remove octave
-                    scaleNotes.add(noteName);
-                });
-            });
+                // Ensure master volume and effects are set up
+                if (!masterVolume) {
+                    const volumeSlider = document.getElementById('volumeSlider');
+                    const volumeDb = (parseFloat(volumeSlider.value) / 100) * 10 - 10;
+                    masterVolume = new Tone.Volume(volumeDb).toDestination();
+                }
+                if (!reverb) {
+                    reverb = new Tone.Reverb({ decay: 3, wet: params.reverbAmount }).connect(masterVolume);
+                }
+                if (!filter) {
+                    filter = new Tone.Filter({ frequency: params.filterFreq, type: 'lowpass', rolloff: -12 }).connect(reverb);
+                }
 
-            // Convert to array and create scale with octaves for melody
-            const noteArray = Array.from(scaleNotes);
-            const scale = [];
+                // Initialize drum synths if not already done by playSynthesizedMusic
+                const kick = synthesizers.kick || new Tone.MembraneSynth({
+                    pitchDecay: 0.05, octaves: 10, oscillator: { type: 'sine' },
+                    envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4 }, volume: -6
+                }).connect(masterVolume);
+                const snare = synthesizers.snare || new Tone.NoiseSynth({
+                    noise: { type: 'white' }, envelope: { attack: 0.001, decay: 0.2, sustain: 0, release: 0.2 }, volume: -10
+                }).connect(masterVolume);
+                const hihat = synthesizers.hihat || new Tone.MetalSynth({
+                    frequency: 200, envelope: { attack: 0.001, decay: 0.1, release: 0.05 },
+                    harmonicity: 5.1, modulationIndex: 32, resonance: 4000, octaves: 1.5, volume: -15
+                }).connect(masterVolume);
 
-            // Create 2 octaves of the scale for melody range
-            [4, 5].forEach(octave => {
-                noteArray.forEach(note => {
-                    scale.push(note + octave);
-                });
-            });
+                // Use existing bass and pads synths or create simple ones for intro
+                const bassSynth = synthesizers.bass || new Tone.MonoSynth({
+                    oscillator: { type: 'sawtooth' }, filter: { Q: 2, type: 'lowpass', rolloff: -24 },
+                    envelope: { attack: 0.01, decay: 0.3, sustain: 0.4, release: 1.2 }, volume: 0
+                }).toDestination();
+                const padSynth = synthesizers.pads || new Tone.PolySynth(Tone.Synth, {
+                    oscillator: { type: 'sine', count: 3, spread: 30 },
+                    envelope: { attack: 1.5, decay: 0.8, sustain: 0.8, release: 3 }, volume: -18
+                }).chain(reverb, filter); // Chain to reverb and filter
 
-            return scale.sort((a, b) => {
-                const noteOrder = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
-                const aNote = a.replace(/[0-9]/g, '');
-                const aOctave = parseInt(a.match(/[0-9]/)[0]);
-                const bNote = b.replace(/[0-9]/g, '');
-                const bOctave = parseInt(b.match(/[0-9]/)[0]);
+                // Set tempo
+                Tone.Transport.bpm.value = params.tempo;
 
-                if (aOctave !== bOctave) return aOctave - bOctave;
-                return noteOrder.indexOf(aNote) - noteOrder.indexOf(bNote);
+                const introDurationBars = 4; // 4 bars intro
+                const introDurationSeconds = Tone.Time(`${introDurationBars}m`).toSeconds();
+
+                // Intro Drum Pattern (building up)
+                const introKick = new Tone.Loop((time) => {
+                    kick.triggerAttackRelease('C1', '8n', time);
+                }, '1n').start(0); // Kick on every beat for the first bar
+
+                const introSnare = new Tone.Loop((time) => {
+                    snare.triggerAttackRelease('8n', time);
+                }, '2n').start('1m'); // Snare on 2 and 4, starting from second bar
+
+                const introHihat = new Tone.Loop((time) => {
+                    hihat.triggerAttackRelease('32n', time);
+                }, '8n').start('2m'); // Hihats from third bar
+
+                // Intro Bass (sustained root note or simple pattern)
+                const introBassPart = new Tone.Part((time, note) => {
+                    bassSynth.triggerAttackRelease(note, '1n', time);
+                }, [[0, params.bassNotes[0]]]).start(0); // First bass note sustained
+
+                // Intro Pads (sustained chord)
+                const introPadPart = new Tone.Part((time, chord) => {
+                    padSynth.triggerAttackRelease(chord, '2n', time);
+                }, [[0, params.chords[0]]]).start('0:2'); // First chord sustained, starting halfway through first bar
+
+                // Store intro parts for cleanup
+                synthParts.introKick = introKick;
+                synthParts.introSnare = introSnare;
+                synthParts.introHihat = introHihat;
+                synthParts.introBassPart = introBassPart;
+                synthParts.introPadPart = introPadPart;
+
+                // Schedule stopping of intro parts and resolution of promise
+                Tone.Transport.scheduleOnce(() => {
+                    introKick.stop();
+                    introSnare.stop();
+                    introHihat.stop();
+                    introBassPart.stop();
+                    introPadPart.stop();
+
+                    // Dispose intro-specific synths if they were created here (not globally stored)
+                    if (!synthesizers.kick) kick.dispose();
+                    if (!synthesizers.snare) snare.dispose();
+                    if (!synthesizers.hihat) hihat.dispose();
+                    if (!synthesizers.bass) bassSynth.dispose();
+                    if (!synthesizers.pads) padSynth.dispose();
+
+                    console.log('✅ Electronic intro finished.');
+                    resolve();
+                }, `+${introDurationBars}m`); // Resolve after introDurationBars measures
             });
         }
+
+
 
 
 
@@ -923,7 +988,7 @@
 
             // Create master volume control
             const volumeSlider = document.getElementById('volumeSlider');
-            const volumeDb = (parseFloat(volumeSlider.value) / 100) * 10 - 10; // Convert 0-100 to -10dB to 0dB
+            const volumeDb = (parseFloat(volumeSlider.value) / 100) * 10 - 10;
             masterVolume = new Tone.Volume(volumeDb).toDestination();
 
             // Get combined style + mood parameters
@@ -945,13 +1010,20 @@
                 rolloff: -12
             }).connect(reverb);
 
+            let mainMusicStartTime = 0;
+            if (selectedStyle === 'electronic') {
+                const introDurationBars = 4;
+                mainMusicStartTime = Tone.Time(`${introDurationBars}m`).toSeconds();
+                await generateElectronicIntro(params);
+            }
+
             // Check if we should use loop-based or synthesized music
             const useLoops = selectedMode === 'organic' && await checkSamplesAvailable();
 
             if (useLoops) {
-                await playLoopBasedMusic(params);
+                await playLoopBasedMusic(params, mainMusicStartTime);
             } else {
-                await playSynthesizedMusic(params);
+                await playSynthesizedMusic(params, mainMusicStartTime);
             }
 
             Tone.Transport.start();
@@ -983,7 +1055,7 @@
         }
 
         // Play music using loops from Freesound samples
-        async function playLoopBasedMusic(params) {
+        async function playLoopBasedMusic(params, mainMusicStartTime = 0) {
             console.log('🎵 Loading loop-based music from samples...');
 
             try {
@@ -1083,7 +1155,7 @@
                 console.log('✅ All samples loaded!');
 
                 // Now start all players
-                players.forEach(player => player.start(0));
+                players.forEach(player => player.start(mainMusicStartTime));
 
                 console.log('🎵 Sample loops playing as foundation!');
                 console.log('🎼 Analyzing sample and generating evolving music...');
@@ -1131,7 +1203,7 @@
                 }
 
                 // Generate evolving music based on sample style
-                await generateEvolvingMusic(params, manifest, players, sampleMetadata);
+                await generateEvolvingMusic(params, manifest, players, sampleMetadata, mainMusicStartTime);
 
                 console.log('✅ Evolving track playing!');
 
@@ -1142,7 +1214,7 @@
         }
 
         // Generate evolving music that grows dynamically from the sample
-        async function generateEvolvingMusic(params, manifest, samplePlayers, sampleMetadata) {
+        async function generateEvolvingMusic(params, manifest, samplePlayers, sampleMetadata, mainMusicStartTime) {
             console.log('🎵 Creating dynamic, evolving composition...');
 
             if (sampleMetadata.notePattern) {
@@ -1215,8 +1287,8 @@
 
             // Schedule evolving sections
             sections.forEach((section, sectionIndex) => {
-                const startTime = currentTime;
-                const endTime = currentTime + section.duration;
+                const startTime = mainMusicStartTime + currentTime;
+                const endTime = mainMusicStartTime + currentTime + section.duration;
 
                 console.log(`📍 Section ${sectionIndex + 1}: ${section.name} (${startTime}s - ${endTime}s) intensity: ${section.intensity}`);
 
@@ -1438,7 +1510,7 @@
             return melody;
         }
 
-        async function playSynthesizedMusic(params) {
+        async function playSynthesizedMusic(params, mainMusicStartTime = 0) {
             // Create drum synthesizers - connect to master volume
             const kick = new Tone.MembraneSynth({
                 pitchDecay: 0.05,
@@ -2027,10 +2099,10 @@
             }, '16n');
 
             // Start drum patterns
-            kickPattern.start(0);
-            snarePattern.start('4n'); // Snare on beat 2 and 4
-            hihatPattern.start(0);
-            shakerPattern.start(0);
+            kickPattern.start(mainMusicStartTime);
+            snarePattern.start(Tone.Time('4n').toSeconds() + mainMusicStartTime); // Snare on beat 2 and 4
+            hihatPattern.start(mainMusicStartTime);
+            shakerPattern.start(mainMusicStartTime);
 
             // Store drum patterns for cleanup
             synthParts.kickPattern = kickPattern;
@@ -2045,13 +2117,13 @@
             console.log('Using scale:', params.scale);
 
             // Start all parts together for consistent playback
-            synthParts.melody.start(0);
-            synthParts.chords.start(0);
-            synthParts.bass.start(0);
-            kickPattern.start(0);
-            snarePattern.start('4n'); // Snare on beat 2 and 4
-            hihatPattern.start(0);
-            shakerPattern.start(0);
+            synthParts.melody.start(mainMusicStartTime);
+            synthParts.chords.start(mainMusicStartTime);
+            synthParts.bass.start(mainMusicStartTime);
+            kickPattern.start(mainMusicStartTime);
+            snarePattern.start(Tone.Time('4n').toSeconds() + mainMusicStartTime); // Snare on beat 2 and 4
+            hihatPattern.start(mainMusicStartTime);
+            shakerPattern.start(mainMusicStartTime);
 
             // Update section display to show it's playing
             document.getElementById('currentSection').textContent = 'Playing';

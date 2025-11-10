@@ -1,0 +1,1782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mood Input</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            width: 100%;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        input[type="text"] {
+            width: 300px;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .selection-section {
+            margin-bottom: 25px;
+        }
+        .selection-section h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .mode-toggle {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .mode-toggle button {
+            flex: 1;
+            padding: 10px;
+            background-color: #e9ecef;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .mode-toggle button.active {
+            background-color: #28a745;
+            color: white;
+            border-color: #218838;
+        }
+        .button-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .preset-btn {
+            background-color: #e9ecef;
+            color: #333;
+            padding: 12px 15px;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 15px;
+            transition: all 0.2s;
+        }
+        .preset-btn:hover {
+            background-color: #dee2e6;
+            border-color: #adb5bd;
+        }
+        .preset-btn.selected {
+            background-color: #007bff;
+            color: white;
+            border-color: #0056b3;
+        }
+        .instrument-selector {
+            width: 100%;
+            padding: 12px 15px;
+            background-color: #fff;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 15px;
+            color: #333;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .instrument-selector:hover {
+            border-color: #007bff;
+        }
+        .instrument-selector:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #generateBtn {
+            width: 100%;
+            padding: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        #generateBtn:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        #playbackControls {
+            margin-top: 20px;
+            display: none;
+        }
+        .volume-control {
+            margin-top: 15px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+        .volume-control label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 0;
+        }
+        .volume-control input[type="range"] {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            background: linear-gradient(to right, #28a745 0%, #28a745 70%, #ddd 70%, #ddd 100%);
+            outline: none;
+            -webkit-appearance: none;
+        }
+        .volume-control input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #007bff;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .volume-control input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #007bff;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .volume-value {
+            min-width: 40px;
+            text-align: right;
+            font-weight: bold;
+            color: #007bff;
+        }
+        #sectionDisplay {
+            margin-top: 15px;
+            padding: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: bold;
+            display: none;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+        #playbackControls button {
+            margin-right: 10px;
+            background-color: #28a745;
+        }
+        #playbackControls button:hover {
+            background-color: #218838;
+        }
+        #playbackControls button.stop {
+            background-color: #dc3545;
+        }
+        #playbackControls button.stop:hover {
+            background-color: #c82333;
+        }
+        .status {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            display: none;
+        }
+        #popeRat {
+            margin-top: 30px;
+            display: none;
+            text-align: center;
+        }
+        #popeRat img {
+            max-width: 400px;
+            width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        #popeRat p {
+            margin-top: 10px;
+            font-style: italic;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="selection-section">
+            <h3>Sound Mode:</h3>
+            <div class="mode-toggle">
+                <button class="mode-btn active" data-mode="synthetic">🎹 Synthetic</button>
+                <button class="mode-btn" data-mode="organic">🎸 Organic (Real Instruments)</button>
+            </div>
+        </div>
+
+        <div class="selection-section">
+            <h3>Choose a Style:</h3>
+            <div class="button-grid">
+                <button class="preset-btn style-btn" data-style="rock">🎸 Rock</button>
+                <button class="preset-btn style-btn" data-style="jazz">🎷 Jazz</button>
+                <button class="preset-btn style-btn" data-style="electronic">🎹 Electronic</button>
+                <button class="preset-btn style-btn" data-style="classical">🎻 Classical</button>
+            </div>
+        </div>
+
+        <div class="selection-section">
+            <h3>Choose a Mood:</h3>
+            <div class="button-grid">
+                <button class="preset-btn mood-btn" data-mood="happy">😊 Happy</button>
+                <button class="preset-btn mood-btn" data-mood="sad">😢 Sad</button>
+                <button class="preset-btn mood-btn" data-mood="calm">😌 Calm</button>
+                <button class="preset-btn mood-btn" data-mood="energetic">⚡ Energetic</button>
+                <button class="preset-btn mood-btn" data-mood="peaceful">🕊️ Peaceful</button>
+                <button class="preset-btn mood-btn" data-mood="excited">🤩 Excited</button>
+            </div>
+        </div>
+
+        <div class="selection-section">
+            <h3>🎹 Lead Instrument:</h3>
+            <select id="leadInstrument" class="instrument-selector">
+                <option value="default">Auto (Style-based)</option>
+                <option value="synth">Classic Synth</option>
+                <option value="fmsynth">FM Synth (Brass)</option>
+                <option value="amsynth">AM Synth (Bell)</option>
+                <option value="plucksynth">Pluck (Guitar)</option>
+                <option value="square">Square Wave (8-bit)</option>
+                <option value="sawtooth">Sawtooth (Bright)</option>
+            </select>
+        </div>
+
+        <div class="selection-section">
+            <h3>🎼 Chord Instrument:</h3>
+            <select id="chordInstrument" class="instrument-selector">
+                <option value="default">Auto (Style-based)</option>
+                <option value="electricPiano">Electric Piano</option>
+                <option value="pad">Warm Pad</option>
+                <option value="strings">Strings</option>
+                <option value="organ">Organ</option>
+            </select>
+        </div>
+
+        <div class="selection-section">
+            <h3>🎸 Bass Instrument:</h3>
+            <select id="bassInstrument" class="instrument-selector">
+                <option value="default">Auto (Style-based)</option>
+                <option value="monosynth">Synth Bass</option>
+                <option value="fmbass">FM Bass</option>
+                <option value="pluckbass">Pluck Bass</option>
+            </select>
+        </div>
+
+        <div class="volume-control">
+            <label>
+                🔊 Volume:
+                <input type="range" id="volumeSlider" min="0" max="100" value="70">
+                <span class="volume-value"><span id="volumeValue">70</span>%</span>
+            </label>
+        </div>
+
+        <button id="generateBtn" disabled>Generate Music</button>
+
+        <div id="sectionDisplay">🎵 Now Playing: <span id="currentSection">Intro</span></div>
+
+        <div id="playbackControls">
+            <button id="stopBtn" class="stop">Stop Music</button>
+        </div>
+
+        <div id="status" class="status"></div>
+
+        <!-- Container for multiple vibing gifs -->
+        <div id="vibeContainer" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1000;">
+        </div>
+    </div>
+
+    <script>
+        // Music generation variables
+        let synthesizers = {
+            melody: null,
+            pads: null,
+            bass: null
+        };
+        let synthParts = {
+            melody: null,
+            chords: null,
+            bass: null
+        };
+        let reverb = null;
+        let filter = null;
+        let isPlaying = false;
+        let masterVolume = null;
+
+        // User selection
+        let selectedMode = 'synthetic'; // Default to synthetic
+        let selectedStyle = null;
+        let selectedMood = null;
+
+        // Style parameter mappings - define musical characteristics for each genre
+        const styleMappings = {
+            rock: {
+                instrumentType: 'electric',
+                distortion: 0.8,
+                drumsPattern: 'fourOnFloor',
+                bassType: 'driving',
+                leadSynth: 'electricPiano', // Changed from trumpet - more guitar-like
+                chordVoicing: 'power', // Power chords (root + fifth)
+                tempoMultiplier: 1.1
+            },
+            jazz: {
+                instrumentType: 'brass',
+                distortion: 0,
+                drumsPattern: 'swing',
+                bassType: 'walking',
+                leadSynth: 'electricPiano', // Saxophone-like
+                chordVoicing: 'extended', // 7ths, 9ths
+                tempoMultiplier: 0.9
+            },
+            electronic: {
+                instrumentType: 'synth',
+                distortion: 0.3,
+                drumsPattern: 'electronic',
+                bassType: 'synth',
+                leadSynth: 'electricPiano',
+                chordVoicing: 'wide', // Wide spacing
+                tempoMultiplier: 1.2
+            },
+            classical: {
+                instrumentType: 'acoustic',
+                distortion: 0,
+                drumsPattern: 'minimal',
+                bassType: 'melodic',
+                leadSynth: 'melody', // Soft, string-like
+                chordVoicing: 'triad', // Simple triads
+                tempoMultiplier: 0.85
+            }
+        };
+
+        // Mood to musical parameter mapping
+        const moodMappings = {
+            happy: {
+                tempo: 110,
+                // Fallback synthesis parameters
+                scale: ['C4', 'D4', 'E4', 'G4', 'A4', 'C5', 'D5', 'E5'],
+                chords: [
+                    ['C3', 'E3', 'G3'],
+                    ['G3', 'B3', 'D4'],
+                    ['A3', 'C4', 'E4'],
+                    ['F3', 'A3', 'C4'],
+                    ['C3', 'E3', 'G3'],
+                    ['G3', 'B3', 'D4'],
+                    ['A3', 'C4', 'E4'],
+                    ['F3', 'A3', 'C4'],
+                    ['C3', 'E3', 'G3'],
+                    ['F3', 'A3', 'C4'],
+                    ['G3', 'B3', 'D4'],
+                    ['C3', 'E3', 'G3']
+                ],
+                bassNotes: ['C2', 'G2', 'A2', 'F2', 'C2', 'E2', 'G2', 'A2', 'F2', 'C2', 'G2', 'A2', 'F2', 'C2', 'G2', 'F2'],
+                melodyPattern: [0, 2, 4, 5, 7, 5, 4, 2, 0, 2, 4, 2, 0, 7, 5, 4, 2, 0, 2, 4, 5, 7, 8, 7, 5, 4, 2, 0, 5, 4, 2, 0],
+                rhythmDensity: 'low',
+                reverbAmount: 0.4,
+                filterFreq: 1200
+            },
+            energetic: {
+                tempo: 140,
+                scale: ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5'],
+                chords: [
+                    ['C3', 'E3', 'G3', 'B3'],
+                    ['D3', 'F3', 'A3', 'C4'],
+                    ['G3', 'B3', 'D4', 'F4'],
+                    ['C3', 'E3', 'G3', 'B3'],
+                    ['C3', 'E3', 'G3', 'B3'],
+                    ['D3', 'F3', 'A3', 'C4'],
+                    ['G3', 'B3', 'D4', 'F4'],
+                    ['C3', 'E3', 'G3', 'B3'],
+                    ['D3', 'F3', 'A3', 'C4'],
+                    ['G3', 'B3', 'D4', 'F4'],
+                    ['C3', 'E3', 'G3', 'B3'],
+                    ['G3', 'B3', 'D4', 'F4']
+                ],
+                bassNotes: ['C2', 'D2', 'G2', 'C2', 'E2', 'D2', 'G2', 'A2', 'C2', 'D2', 'G2', 'C2', 'E2', 'D2', 'G2', 'A2'],
+                melodyPattern: [0, 4, 7, 4, 6, 5, 4, 2, 7, 6, 5, 4, 2, 4, 2, 0, 0, 4, 7, 6, 5, 4, 2, 0, 7, 5, 4, 2, 5, 4, 2, 0],
+                rhythmDensity: 'high',
+                reverbAmount: 0.2,
+                filterFreq: 4500
+            },
+            calm: {
+                tempo: 70,
+                scale: ['C4', 'D4', 'E4', 'G4', 'A4', 'C5'],
+                chords: [
+                    ['C3', 'E3', 'G3', 'D4'],
+                    ['F3', 'A3', 'C4', 'E4'],
+                    ['G3', 'B3', 'D4', 'F4'],
+                    ['C3', 'E3', 'G3', 'D4'],
+                    ['C3', 'E3', 'G3', 'D4'],
+                    ['F3', 'A3', 'C4', 'E4'],
+                    ['G3', 'B3', 'D4', 'F4'],
+                    ['C3', 'E3', 'G3', 'D4'],
+                    ['F3', 'A3', 'C4', 'E4'],
+                    ['C3', 'E3', 'G3', 'D4'],
+                    ['G3', 'B3', 'D4', 'F4'],
+                    ['F3', 'A3', 'C4', 'E4']
+                ],
+                bassNotes: ['C2', 'F2', 'G2', 'C2', 'D2', 'F2', 'G2', 'C2', 'C2', 'F2', 'G2', 'C2', 'D2', 'F2', 'G2', 'C2'],
+                melodyPattern: [0, 2, 1, 3, 2, 4, 3, 1, 5, 4, 3, 2, 1, 2, 1, 0, 0, 1, 2, 3, 4, 3, 2, 1, 3, 2, 1, 0, 2, 1, 0, -1],
+                rhythmDensity: 'low',
+                reverbAmount: 0.5,
+                filterFreq: 700
+            },
+            sad: {
+                tempo: 65,
+                scale: ['C4', 'D4', 'Eb4', 'F4', 'G4', 'Ab4', 'Bb4', 'C5'],
+                chords: [
+                    ['C3', 'Eb3', 'G3'],
+                    ['Ab3', 'C4', 'Eb4'],
+                    ['Bb3', 'D4', 'F4'],
+                    ['G3', 'B3', 'D4'],
+                    ['C3', 'Eb3', 'G3'],
+                    ['Ab3', 'C4', 'Eb4'],
+                    ['Bb3', 'D4', 'F4'],
+                    ['G3', 'B3', 'D4'],
+                    ['Ab3', 'C4', 'Eb4'],
+                    ['G3', 'B3', 'D4'],
+                    ['F3', 'Ab3', 'C4'],
+                    ['Eb3', 'G3', 'Bb3']
+                ],
+                bassNotes: ['C2', 'Ab2', 'Bb2', 'G2', 'Eb2', 'Ab2', 'Bb2', 'G2', 'C2', 'Ab2', 'Bb2', 'G2', 'Eb2', 'Ab2', 'Bb2', 'G2'],
+                melodyPattern: [0, 2, 1, 3, 2, 0, 5, 3, 4, 3, 2, 1, 0, 1, 0, -1, 0, 1, 2, 1, 0, -1, -2, -1, 0, 2, 1, 0, 3, 2, 1, 0],
+                rhythmDensity: 'low',
+                reverbAmount: 0.6,
+                filterFreq: 500
+            },
+            peaceful: {
+                tempo: 60,
+                scale: ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'C5'],
+                chords: [
+                    ['C3', 'E3', 'G3', 'B3'],
+                    ['F3', 'A3', 'C4', 'E4'],
+                    ['G3', 'B3', 'D4', 'F4'],
+                    ['C3', 'E3', 'G3', 'B3'],
+                    ['C3', 'E3', 'G3', 'B3'],
+                    ['F3', 'A3', 'C4', 'E4'],
+                    ['G3', 'B3', 'D4', 'F4'],
+                    ['C3', 'E3', 'G3', 'B3'],
+                    ['F3', 'A3', 'C4', 'E4'],
+                    ['G3', 'B3', 'D4', 'F4'],
+                    ['C3', 'E3', 'G3', 'B3'],
+                    ['Am3', 'C4', 'E4', 'G4']
+                ],
+                bassNotes: ['C2', 'F2', 'G2', 'C2', 'D2', 'F2', 'G2', 'C2', 'C2', 'F2', 'G2', 'C2', 'D2', 'F2', 'G2', 'C2'],
+                melodyPattern: [0, 1, 2, 1, 3, 2, 1, 0, 4, 3, 2, 1, 0, 1, 2, 1, 0, 2, 3, 2, 1, 0, -1, 0, 1, 2, 3, 4, 3, 2, 1, 0],
+                rhythmDensity: 'low',
+                reverbAmount: 0.7,
+                filterFreq: 400
+            },
+            excited: {
+                tempo: 150,
+                scale: ['C4', 'D4', 'E4', 'F#4', 'G4', 'A4', 'B4', 'C5', 'D5'],
+                chords: [
+                    ['C3', 'E3', 'G3'],
+                    ['D3', 'F#3', 'A3'],
+                    ['G3', 'B3', 'D4'],
+                    ['C3', 'E3', 'G3'],
+                    ['C3', 'E3', 'G3'],
+                    ['D3', 'F#3', 'A3'],
+                    ['G3', 'B3', 'D4'],
+                    ['C3', 'E3', 'G3'],
+                    ['D3', 'F#3', 'A3'],
+                    ['G3', 'B3', 'D4'],
+                    ['A3', 'C#4', 'E4'],
+                    ['G3', 'B3', 'D4']
+                ],
+                bassNotes: ['C2', 'D2', 'G2', 'C2', 'E2', 'D2', 'G2', 'A2', 'C2', 'D2', 'G2', 'C2', 'E2', 'D2', 'G2', 'A2'],
+                melodyPattern: [0, 3, 5, 7, 8, 6, 4, 2, 8, 7, 5, 3, 2, 3, 5, 7, 0, 3, 5, 7, 8, 7, 5, 3, 8, 6, 4, 2, 5, 7, 8, 7],
+                rhythmDensity: 'high',
+                reverbAmount: 0.3,
+                filterFreq: 4000
+            },
+            rock: {
+                tempo: 160,
+                scale: ['C4', 'Eb4', 'F4', 'G4', 'Bb4', 'C5'],
+                chords: [
+                    ['C3', 'G3'],
+                    ['G3', 'D4'],
+                    ['F3', 'C4'],
+                    ['C3', 'G3'],
+                    ['C3', 'G3'],
+                    ['G3', 'D4'],
+                    ['F3', 'C4'],
+                    ['C3', 'G3'],
+                    ['C3', 'G3'],
+                    ['G3', 'D4'],
+                    ['F3', 'C4'],
+                    ['C3', 'G3']
+                ],
+                bassNotes: ['C2', 'G2', 'F2', 'C2', 'C2', 'G2', 'F2', 'C2', 'C2', 'G2', 'F2', 'C2', 'C2', 'G2', 'F2', 'C2'],
+                melodyPattern: [0, 1, 2, 3, 4, 3, 2, 1, 0, 1, 2, 1, 0, 4, 3, 2, 1, 0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0, 3, 2, 1, 0],
+                rhythmDensity: 'high',
+                reverbAmount: 0.2,
+                filterFreq: 5000
+            }
+        };
+
+        // Combine style and mood parameters
+        function getCombinedParameters(style, mood) {
+            const styleParams = styleMappings[style];
+            const moodParams = moodMappings[mood];
+
+            // Generate dynamic chord progression based on style
+            const chords = generateChordProgression(style, mood);
+            const bassNotes = generateBassLine(chords, styleParams.bassType);
+
+            // Generate harmonically correct scale from chords
+            const scale = generateScaleFromChords(chords);
+
+            // Merge parameters, applying style modifications to mood base
+            return {
+                ...moodParams,
+                tempo: Math.round(moodParams.tempo * styleParams.tempoMultiplier),
+                leadSynth: styleParams.leadSynth,
+                chordVoicing: styleParams.chordVoicing,
+                drumsPattern: styleParams.drumsPattern,
+                bassType: styleParams.bassType,
+                distortion: styleParams.distortion,
+                style: style,
+                mood: mood,
+                mode: selectedMode, // Include organic/synthetic mode
+                chords: chords,
+                bassNotes: bassNotes,
+                scale: scale, // Use generated scale instead of hardcoded
+                structure: generateSongStructure(mood) // Add song structure
+            };
+        }
+
+        // Generate chord progressions based on style and mood
+        function generateChordProgression(style, mood) {
+            // Common chord progressions by mood
+            const progressions = {
+                happy: { numerals: ['I', 'V', 'vi', 'IV'], key: 'C', mode: 'major' },      // C-G-Am-F
+                sad: { numerals: ['i', 'bVI', 'bVII', 'V'], key: 'C', mode: 'minor' },      // Cm-Ab-Bb-G
+                calm: { numerals: ['I', 'IV', 'V', 'I'], key: 'C', mode: 'major' },         // C-F-G-C
+                energetic: { numerals: ['I', 'IV', 'V', 'V'], key: 'C', mode: 'major' },    // C-F-G-G
+                peaceful: { numerals: ['I', 'V', 'vi', 'V'], key: 'C', mode: 'major' },     // C-G-Am-G
+                excited: { numerals: ['I', 'bVII', 'IV', 'I'], key: 'C', mode: 'major' }    // C-Bb-F-C (modal)
+            };
+
+            const progression = progressions[mood] || progressions.happy;
+
+            return progression.numerals.map(numeral => voiceChord(numeral, progression.key, style, progression.mode));
+        }
+
+        // Voice a chord based on Roman numeral, key, and style
+        function voiceChord(numeral, key, style, mode = 'major') {
+            // Map Roman numerals to chord types in C major/minor
+            const chordMapMajor = {
+                'I': { root: 'C', quality: 'major' },
+                'ii': { root: 'D', quality: 'minor' },
+                'iii': { root: 'E', quality: 'minor' },
+                'IV': { root: 'F', quality: 'major' },
+                'V': { root: 'G', quality: 'major' },
+                'vi': { root: 'A', quality: 'minor' },
+                'vii°': { root: 'B', quality: 'diminished' },
+                'bVII': { root: 'Bb', quality: 'major' }
+            };
+
+            const chordMapMinor = {
+                'i': { root: 'C', quality: 'minor' },
+                'ii°': { root: 'D', quality: 'diminished' },
+                'bIII': { root: 'Eb', quality: 'major' },
+                'iv': { root: 'F', quality: 'minor' },
+                'v': { root: 'G', quality: 'minor' },
+                'V': { root: 'G', quality: 'major' }, // Harmonic minor
+                'bVI': { root: 'Ab', quality: 'major' },
+                'bVII': { root: 'Bb', quality: 'major' }
+            };
+
+            const chordMap = mode === 'minor' ? chordMapMinor : chordMapMajor;
+            const chordInfo = chordMap[numeral];
+            if (!chordInfo) return ['C3', 'E3', 'G3']; // Default
+
+            const voicing = styleMappings[style].chordVoicing;
+
+            if (voicing === 'power') {
+                // Power chords: root + fifth only (rock)
+                return [
+                    chordInfo.root + '3',
+                    getPerfectFifth(chordInfo.root) + '3'
+                ];
+            } else if (voicing === 'extended') {
+                // Jazz chords: add 7th and 9th
+                const seventh = chordInfo.quality === 'major' ? 'maj7' : '7';
+                return [
+                    chordInfo.root + '3',
+                    getThird(chordInfo.root, chordInfo.quality) + '3',
+                    getPerfectFifth(chordInfo.root) + '3',
+                    getSeventh(chordInfo.root, chordInfo.quality) + '4'
+                ];
+            } else if (voicing === 'wide') {
+                // Electronic: wider spacing
+                return [
+                    chordInfo.root + '2',
+                    getThird(chordInfo.root, chordInfo.quality) + '3',
+                    getPerfectFifth(chordInfo.root) + '4'
+                ];
+            } else {
+                // Classical: simple triad
+                return [
+                    chordInfo.root + '3',
+                    getThird(chordInfo.root, chordInfo.quality) + '3',
+                    getPerfectFifth(chordInfo.root) + '3'
+                ];
+            }
+        }
+
+        // Helper functions for chord construction
+        function getThird(root, quality) {
+            const notes = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+            const rootIndex = notes.indexOf(root);
+            const interval = quality === 'major' ? 4 : 3; // major = 4 semitones, minor = 3
+            return notes[(rootIndex + interval) % 12];
+        }
+
+        function getPerfectFifth(root) {
+            const notes = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+            const rootIndex = notes.indexOf(root);
+            return notes[(rootIndex + 7) % 12]; // Perfect fifth = 7 semitones
+        }
+
+        function getSeventh(root, quality) {
+            const notes = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+            const rootIndex = notes.indexOf(root);
+            const interval = quality === 'major' ? 11 : 10; // maj7 = 11, dom7/min7 = 10
+            return notes[(rootIndex + interval) % 12];
+        }
+
+        // Generate bass line from chord progression
+        function generateBassLine(chords, bassType) {
+            const bassNotes = [];
+
+            chords.forEach((chord, index) => {
+                const root = chord[0].replace(/[0-9]/g, ''); // Extract note without octave
+
+                if (bassType === 'driving') {
+                    // Rock: root on every beat
+                    bassNotes.push(root + '2', root + '2', root + '2', root + '2');
+                } else if (bassType === 'walking') {
+                    // Jazz: walking bass with chromatic approach
+                    const nextChord = chords[index + 1] || chords[0]; // Next chord or loop back
+                    const nextRoot = nextChord[0].replace(/[0-9]/g, '');
+
+                    bassNotes.push(root + '2');
+                    bassNotes.push(getPerfectFifth(root) + '2');
+                    bassNotes.push(getThird(root, 'major') + '2');
+                    bassNotes.push(getApproachNote(root, nextRoot) + '2');
+                } else if (bassType === 'synth') {
+                    // Electronic: syncopated
+                    bassNotes.push(root + '2', root + '2', root + '1', root + '2');
+                } else {
+                    // Classical: melodic, simple
+                    bassNotes.push(root + '2', getPerfectFifth(root) + '2');
+                }
+            });
+
+            return bassNotes;
+        }
+
+        function getApproachNote(current, next) {
+            const notes = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+            const currentIndex = notes.indexOf(current);
+            const nextIndex = notes.indexOf(next);
+
+            // Chromatic approach from below or above
+            if (nextIndex > currentIndex) {
+                return notes[(nextIndex - 1 + 12) % 12];
+            } else {
+                return notes[(nextIndex + 1) % 12];
+            }
+        }
+
+        // Generate song structure with sections
+        function generateSongStructure(mood) {
+            // Different structures based on mood energy
+            const structures = {
+                high: ['intro', 'verse', 'chorus', 'verse', 'chorus', 'bridge', 'chorus', 'outro'],
+                medium: ['intro', 'verse', 'chorus', 'verse', 'chorus', 'outro'],
+                low: ['intro', 'verse', 'verse', 'outro']
+            };
+
+            const energy = (mood === 'energetic' || mood === 'excited') ? 'high' :
+                          (mood === 'happy') ? 'medium' : 'low';
+
+            return structures[energy];
+        }
+
+        // Generate a melodic scale from chord progression
+        function generateScaleFromChords(chords) {
+            const scaleNotes = new Set();
+
+            // Extract all unique notes from the chord progression
+            chords.forEach(chord => {
+                chord.forEach(note => {
+                    const noteName = note.replace(/[0-9]/g, ''); // Remove octave
+                    scaleNotes.add(noteName);
+                });
+            });
+
+            // Convert to array and create scale with octaves for melody
+            const noteArray = Array.from(scaleNotes);
+            const scale = [];
+
+            // Create 2 octaves of the scale for melody range
+            [4, 5].forEach(octave => {
+                noteArray.forEach(note => {
+                    scale.push(note + octave);
+                });
+            });
+
+            return scale.sort((a, b) => {
+                const noteOrder = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+                const aNote = a.replace(/[0-9]/g, '');
+                const aOctave = parseInt(a.match(/[0-9]/)[0]);
+                const bNote = b.replace(/[0-9]/g, '');
+                const bOctave = parseInt(b.match(/[0-9]/)[0]);
+
+                if (aOctave !== bOctave) return aOctave - bOctave;
+                return noteOrder.indexOf(aNote) - noteOrder.indexOf(bNote);
+            });
+        }
+
+        function getMoodParameters(mood) {
+            const normalizedMood = mood.toLowerCase().trim();
+
+            // Direct match
+            if (moodMappings[normalizedMood]) {
+                return moodMappings[normalizedMood];
+            }
+
+            // Fuzzy matching for similar moods
+            for (const [key, value] of Object.entries(moodMappings)) {
+                if (normalizedMood.includes(key) || key.includes(normalizedMood)) {
+                    return value;
+                }
+            }
+
+            // Default to calm if no match
+            return moodMappings.calm;
+        }
+
+        // Store active gifs for cleanup
+        let activeGifs = [];
+        let maxConcurrentGifs = 5;
+        let gifSpawnChance = 0.8; // Probability to spawn on each beat
+
+        // Function to spawn a new gif on beat
+        function spawnVibeGif() {
+            // Clean up old gifs
+            activeGifs = activeGifs.filter(gif => document.body.contains(gif.element));
+
+            // Limit concurrent gifs
+            if (activeGifs.length >= maxConcurrentGifs) {
+                return;
+            }
+
+            // Random spawn chance for variety
+            if (Math.random() > gifSpawnChance) {
+                return;
+            }
+
+            const container = document.getElementById('vibeContainer');
+
+            // Create gif element
+            const gifDiv = document.createElement('div');
+            gifDiv.style.position = 'absolute';
+            gifDiv.style.pointerEvents = 'none';
+
+            const img = document.createElement('img');
+            img.src = 'ameno-dorime-dorime.gif';
+            img.alt = 'Vibing';
+
+            // Random size (100-250px)
+            const size = 100 + Math.random() * 150;
+            img.style.width = size + 'px';
+            img.style.height = 'auto';
+
+            gifDiv.appendChild(img);
+
+            // Random starting position
+            const maxX = window.innerWidth - size;
+            const maxY = window.innerHeight - size;
+            const startX = Math.max(0, Math.random() * maxX);
+            const startY = Math.max(0, Math.random() * maxY);
+
+            gifDiv.style.left = startX + 'px';
+            gifDiv.style.top = startY + 'px';
+
+            // Random rotation
+            const rotation = Math.random() * 360;
+
+            // Start invisible
+            gifDiv.style.opacity = '0';
+            gifDiv.style.transform = `rotate(${rotation}deg) scale(0.5)`;
+            gifDiv.style.transition = 'opacity 0.3s ease-out, transform 0.5s ease-out';
+
+            container.appendChild(gifDiv);
+
+            // Animate in
+            setTimeout(() => {
+                gifDiv.style.opacity = '1';
+                gifDiv.style.transform = `rotate(${rotation}deg) scale(1)`;
+            }, 50);
+
+            // Drift animation
+            const driftX = (Math.random() - 0.5) * 200; // Drift up to 200px
+            const driftY = (Math.random() - 0.5) * 200;
+            const driftDuration = 2000 + Math.random() * 2000; // 2-4 seconds
+
+            setTimeout(() => {
+                gifDiv.style.transition = `all ${driftDuration}ms ease-out`;
+                gifDiv.style.left = (startX + driftX) + 'px';
+                gifDiv.style.top = (startY + driftY) + 'px';
+                gifDiv.style.transform = `rotate(${rotation + 180}deg) scale(1.2)`;
+            }, 100);
+
+            // Store reference
+            activeGifs.push({
+                element: gifDiv,
+                spawnTime: Date.now()
+            });
+
+            // Remove after animation (3-5 seconds)
+            const lifetime = 3000 + Math.random() * 2000;
+            setTimeout(() => {
+                gifDiv.style.transition = 'opacity 0.5s ease-out, transform 0.5s ease-out';
+                gifDiv.style.opacity = '0';
+                gifDiv.style.transform = `rotate(${rotation + 360}deg) scale(0.3)`;
+
+                setTimeout(() => {
+                    if (gifDiv.parentNode) {
+                        gifDiv.parentNode.removeChild(gifDiv);
+                    }
+                }, 500);
+            }, lifetime);
+        }
+
+        // Function to setup beat-synced gif spawning
+        function setupBeatSyncedGifs(rhythmDensity) {
+            // Adjust spawn parameters based on rhythm density
+            if (rhythmDensity === 'high') {
+                maxConcurrentGifs = 8;
+                gifSpawnChance = 0.9;
+            } else if (rhythmDensity === 'medium') {
+                maxConcurrentGifs = 5;
+                gifSpawnChance = 0.7;
+            } else {
+                maxConcurrentGifs = 3;
+                gifSpawnChance = 0.5;
+            }
+        }
+
+        // Function to stop the vibe animation movement and clean up all gifs
+        function stopVibeMovement() {
+            // Remove all active gifs
+            const container = document.getElementById('vibeContainer');
+            if (container) {
+                container.innerHTML = '';
+            }
+            activeGifs = [];
+        }
+
+        async function generateMusic() {
+            if (!selectedStyle || !selectedMood) {
+                showStatus('Please select both a style and a mood!', 'error');
+                return;
+            }
+
+            // Stop any existing music
+            if (isPlaying) {
+                stopMusic();
+            }
+
+            // Start Tone.js audio context
+            await Tone.start();
+            console.log('Audio context started');
+
+            // Create master volume control
+            const volumeSlider = document.getElementById('volumeSlider');
+            const volumeDb = (parseFloat(volumeSlider.value) / 100) * 10 - 10; // Convert 0-100 to -10dB to 0dB
+            masterVolume = new Tone.Volume(volumeDb).toDestination();
+
+            // Get combined style + mood parameters
+            const params = getCombinedParameters(selectedStyle, selectedMood);
+            console.log('Combined parameters:', params);
+
+            // Set tempo (mood tempo adjusted by style multiplier)
+            Tone.Transport.bpm.value = params.tempo;
+
+            // Create effects chain connected to master volume
+            reverb = new Tone.Reverb({
+                decay: 3,
+                wet: params.reverbAmount
+            }).connect(masterVolume);
+
+            filter = new Tone.Filter({
+                frequency: params.filterFreq,
+                type: 'lowpass',
+                rolloff: -12
+            }).connect(reverb);
+
+            await playSynthesizedMusic(params);
+
+            Tone.Transport.start();
+
+            isPlaying = true;
+            document.getElementById('playbackControls').style.display = 'block';
+            document.getElementById('sectionDisplay').style.display = 'block';
+
+            const modeLabel = selectedMode === 'organic' ? 'ORGANIC' : 'SYNTHETIC';
+            showStatus(`Playing ${modeLabel} ${selectedStyle.toUpperCase()} ${selectedMood} music - ${params.tempo} BPM`, 'success');
+        }
+
+        async function playSynthesizedMusic(params) {
+            // Create drum synthesizers - connect to master volume
+            const kick = new Tone.MembraneSynth({
+                pitchDecay: 0.05,
+                octaves: 10,
+                oscillator: { type: 'sine' },
+                envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4 },
+                volume: -6
+            }).connect(masterVolume);
+
+            const snare = new Tone.NoiseSynth({
+                noise: { type: 'white' },
+                envelope: { attack: 0.001, decay: 0.2, sustain: 0, release: 0.2 },
+                volume: -10
+            }).connect(masterVolume);
+
+            const hihat = new Tone.MetalSynth({
+                frequency: 200,
+                envelope: { attack: 0.001, decay: 0.1, release: 0.05 },
+                harmonicity: 5.1,
+                modulationIndex: 32,
+                resonance: 4000,
+                octaves: 1.5,
+                volume: -15
+            }).connect(masterVolume);
+
+            // Add shaker for texture
+            const shaker = new Tone.NoiseSynth({
+                noise: { type: 'pink' },
+                envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.05 },
+                volume: -20
+            }).connect(masterVolume);
+
+            // Create enhanced effects chain
+            const chorus = new Tone.Chorus(4, 2.5, 0.5).start();
+            const delay = new Tone.FeedbackDelay('8n', 0.3);
+            const compressor = new Tone.Compressor(-20, 3);
+            const tremolo = new Tone.Tremolo(6, 0.3).start();
+
+            const isOrganic = params.mode === 'organic';
+
+            // Helper function to create sample URLs (used for both organic instruments)
+            const createSampleUrls = (baseUrl, notes) => {
+                const urls = {};
+                notes.forEach(note => {
+                    urls[note] = `${baseUrl}${note}.mp3`;
+                });
+                return urls;
+            };
+
+            // Sample URLs - local first, CDN fallback
+            const pianoBaseUrl = 'samples/piano/';
+            const pianoFallbackUrl = 'https://tonejs.github.io/audio/salamander/';
+
+            if (isOrganic) {
+                // ORGANIC MODE: Real audio samples with Tone.Sampler
+                console.log('Creating ORGANIC instruments with audio samples');
+
+                // Piano sampler with common notes
+                const pianoNotes = ['C2', 'D2', 'E2', 'F2', 'G2', 'A2', 'B2',
+                                   'C3', 'D3', 'E3', 'F3', 'G3', 'A3', 'B3',
+                                   'C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5'];
+
+                // Create piano sampler (will be used for electricPiano)
+                synthesizers.electricPiano = new Tone.Sampler({
+                    urls: createSampleUrls(pianoFallbackUrl, pianoNotes),
+                    release: 1,
+                    volume: -8,
+                    onload: () => {
+                        console.log('Piano samples loaded successfully');
+                    },
+                    onerror: (error) => {
+                        console.warn('Failed to load piano samples:', error);
+                        // Fallback to synth
+                        synthesizers.electricPiano = new Tone.PolySynth(Tone.Synth, {
+                            oscillator: { type: 'triangle' },
+                            envelope: { attack: 0.005, decay: 0.3, sustain: 0.1, release: 3 },
+                            volume: -8
+                        }).chain(chorus, filter);
+                    }
+                }).chain(chorus, filter);
+
+                // Lead/Melody sampler (using subset of piano for now)
+                const melodyNotes = ['C3', 'D3', 'E3', 'F3', 'G3', 'A3', 'B3',
+                                    'C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4'];
+
+                synthesizers.melody = new Tone.Sampler({
+                    urls: createSampleUrls(pianoFallbackUrl, melodyNotes),
+                    release: 2,
+                    volume: -6,
+                    onload: () => {
+                        console.log('Melody samples loaded successfully');
+                    }
+                }).chain(chorus, filter);
+
+                // Brass - use piano samples pitched down for now (can replace with brass samples later)
+                synthesizers.brass = new Tone.Sampler({
+                    urls: createSampleUrls(pianoFallbackUrl, ['C3', 'E3', 'G3', 'C4']),
+                    release: 1.5,
+                    volume: -2,
+                    onload: () => {
+                        console.log('Brass samples loaded successfully');
+                    }
+                }).chain(delay, compressor, filter);
+
+                // Trumpet/Lead - same as melody for now
+                synthesizers.trumpet = synthesizers.melody;
+
+            } else {
+                // SYNTHETIC MODE: Original electronic sounds
+                console.log('Creating SYNTHETIC instruments');
+
+                // Electric Piano (Rhodes-like sound) - Warmer, less metallic
+                synthesizers.electricPiano = new Tone.PolySynth(Tone.FMSynth, {
+                harmonicity: 1,
+                modulationIndex: 4,
+                oscillator: { type: 'sine' },
+                envelope: {
+                    attack: 0.02,
+                    decay: 0.6,
+                    sustain: 0.2,
+                    release: 2
+                },
+                modulation: { type: 'sine' },
+                modulationEnvelope: {
+                    attack: 0.05,
+                    decay: 0.4,
+                    sustain: 0.05,
+                    release: 0.8
+                },
+                volume: -3
+            }).chain(tremolo, chorus, filter);
+
+            // Brass/Saxophone (FM synthesis with slides) - LOUDER
+            synthesizers.brass = new Tone.PolySynth(Tone.FMSynth, {
+                harmonicity: 3.5,
+                modulationIndex: 20,
+                oscillator: { type: 'sine' },
+                envelope: {
+                    attack: 0.08,
+                    decay: 0.3,
+                    sustain: 0.6,
+                    release: 1.2
+                },
+                modulation: { type: 'sawtooth' },
+                modulationEnvelope: {
+                    attack: 0.1,
+                    decay: 0.2,
+                    sustain: 0.8,
+                    release: 1.0
+                },
+                volume: 0
+            }).chain(delay, compressor, filter);
+
+            // Trumpet (higher, brighter brass) - LOUDER
+            synthesizers.trumpet = new Tone.PolySynth(Tone.AMSynth, {
+                harmonicity: 2,
+                oscillator: { type: 'sine' },
+                envelope: {
+                    attack: 0.05,
+                    decay: 0.2,
+                    sustain: 0.7,
+                    release: 0.8
+                },
+                modulation: { type: 'square' },
+                modulationEnvelope: {
+                    attack: 0.15,
+                    decay: 0.1,
+                    sustain: 0.7,
+                    release: 0.6
+                },
+                volume: 0  // Much louder!
+            }).chain(delay, compressor, filter);
+
+            // Keep original melody synth as backup
+            synthesizers.melody = new Tone.PolySynth(Tone.AMSynth, {
+                harmonicity: 1.2,
+                oscillator: { type: 'sine' },
+                envelope: {
+                    attack: 0.01,
+                    decay: 0.2,
+                    sustain: 0.3,
+                    release: 1
+                },
+                modulation: { type: 'square' },
+                modulationEnvelope: {
+                    attack: 0.2,
+                    decay: 0.01,
+                    sustain: 0.5,
+                    release: 0.8
+                },
+                volume: -8
+            }).chain(delay, compressor, filter);
+            }
+
+            // ===== ADDITIONAL LEAD INSTRUMENTS =====
+            // Classic Synth (Triangle wave)
+            synthesizers.synth = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { type: 'triangle' },
+                envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 1 },
+                volume: -6
+            }).chain(delay, filter);
+
+            // FM Synth (Brass-like)
+            synthesizers.fmsynth = new Tone.PolySynth(Tone.FMSynth, {
+                harmonicity: 3,
+                modulationIndex: 15,
+                oscillator: { type: 'sine' },
+                envelope: { attack: 0.02, decay: 0.2, sustain: 0.6, release: 0.8 },
+                volume: -4
+            }).chain(delay, compressor, filter);
+
+            // AM Synth (Bell-like)
+            synthesizers.amsynth = new Tone.PolySynth(Tone.AMSynth, {
+                harmonicity: 3,
+                oscillator: { type: 'sine' },
+                envelope: { attack: 0.01, decay: 0.3, sustain: 0.4, release: 1.2 },
+                volume: -6
+            }).chain(chorus, filter);
+
+            // Pluck Synth (Guitar-like)
+            synthesizers.plucksynth = new Tone.PluckSynth({
+                attackNoise: 2,
+                dampening: 4000,
+                resonance: 0.95,
+                volume: -6
+            }).chain(delay, filter);
+
+            // Square Wave (8-bit retro)
+            synthesizers.square = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { type: 'square' },
+                envelope: { attack: 0.001, decay: 0.1, sustain: 0.2, release: 0.5 },
+                volume: -8
+            }).chain(filter);
+
+            // Sawtooth (Bright)
+            synthesizers.sawtooth = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { type: 'sawtooth' },
+                envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 0.8 },
+                volume: -6
+            }).chain(delay, filter);
+
+            // ===== ADDITIONAL CHORD/PAD INSTRUMENTS =====
+            // Strings
+            synthesizers.strings = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { type: 'sawtooth' },
+                envelope: { attack: 0.5, decay: 0.3, sustain: 0.7, release: 2 },
+                volume: -12
+            }).chain(chorus, filter);
+
+            // Organ
+            synthesizers.organ = new Tone.PolySynth(Tone.FMSynth, {
+                harmonicity: 2,
+                modulationIndex: 8,
+                oscillator: { type: 'sine' },
+                envelope: { attack: 0.01, decay: 0.2, sustain: 0.8, release: 0.4 },
+                volume: -10
+            }).chain(filter);
+
+            // ===== ADDITIONAL BASS INSTRUMENTS =====
+            // Synth Bass (Mono)
+            synthesizers.monosynth = new Tone.MonoSynth({
+                oscillator: { type: 'sawtooth' },
+                filter: { Q: 6, type: 'lowpass', rolloff: -24 },
+                envelope: { attack: 0.01, decay: 0.3, sustain: 0.4, release: 0.8 },
+                volume: 0
+            }).toDestination();
+
+            // FM Bass
+            synthesizers.fmbass = new Tone.FMSynth({
+                harmonicity: 1,
+                modulationIndex: 8,
+                oscillator: { type: 'sine' },
+                envelope: { attack: 0.01, decay: 0.2, sustain: 0.4, release: 0.6 },
+                volume: 0
+            }).toDestination();
+
+            // Pluck Bass
+            synthesizers.pluckbass = new Tone.PluckSynth({
+                attackNoise: 1,
+                dampening: 2000,
+                resonance: 0.9,
+                volume: 2
+            }).toDestination();
+
+            // Create pads - use samples for organic, synth for synthetic
+            if (isOrganic) {
+                // Pad sampler for organic mode (using sustained piano notes)
+                const padNotes = ['C3', 'E3', 'G3', 'C4', 'E4', 'G4'];
+                synthesizers.pads = new Tone.Sampler({
+                    urls: createSampleUrls(pianoFallbackUrl, padNotes),
+                    release: 3,
+                    volume: -12, // Quieter background pad
+                    onload: () => {
+                        console.log('Pad samples loaded successfully');
+                    }
+                }).chain(chorus, filter);
+            } else {
+                // Synthetic pad
+                synthesizers.pads = new Tone.PolySynth(Tone.Synth, {
+                    oscillator: {
+                        type: 'sine',
+                        count: 3,
+                        spread: 30 // Detuning for thickness
+                    },
+                    envelope: {
+                        attack: 1.5,
+                        decay: 0.8,
+                        sustain: 0.8,
+                        release: 3
+                    },
+                    volume: -18  // Quieter to let other instruments shine
+                }).chain(chorus, filter);
+            }
+
+            // Create bass - use samples for organic, synth for synthetic
+            if (isOrganic) {
+                // Bass sampler for organic mode
+                const bassNotes = ['C2', 'D2', 'E2', 'F2', 'G2', 'A2', 'B2', 'C3'];
+                synthesizers.bass = new Tone.Sampler({
+                    urls: createSampleUrls(pianoFallbackUrl, bassNotes),
+                    release: 1.2,
+                    volume: 2, // Slightly louder for bass presence
+                    onload: () => {
+                        console.log('Bass samples loaded successfully');
+                    }
+                }).toDestination();
+            } else {
+                // Synthetic bass
+                synthesizers.bass = new Tone.MonoSynth({
+                    oscillator: {
+                        type: 'sawtooth'
+                    },
+                    filter: {
+                        Q: 2,
+                        type: 'lowpass',
+                        rolloff: -24
+                    },
+                    envelope: {
+                        attack: 0.01,
+                        decay: 0.3,
+                        sustain: 0.4,
+                        release: 1.2
+                    },
+                    filterEnvelope: {
+                        attack: 0.01,
+                        decay: 0.15,
+                        sustain: 0.3,
+                        release: 0.8,
+                        baseFrequency: 50,
+                        octaves: 3
+                    },
+                    volume: 0  // Moderate bass level
+                }).toDestination();
+            }
+
+            // Store effects for cleanup
+            synthesizers.chorus = chorus;
+            synthesizers.delay = delay;
+            synthesizers.compressor = compressor;
+            synthesizers.tremolo = tremolo;
+
+            // Store drum synths for cleanup
+            synthesizers.kick = kick;
+            synthesizers.snare = snare;
+            synthesizers.hihat = hihat;
+            synthesizers.shaker = shaker;
+
+            // Generate random melody sequence that fits the mood
+            function generateMelody(scale, density, length) {
+                const melody = [];
+                let currentIndex = Math.floor(Math.random() * 4) + 1; // Start in middle of scale
+                let direction = Math.random() > 0.5 ? 1 : -1; // Start moving up or down
+                let stepsSinceChange = 0;
+
+                for (let i = 0; i < length; i++) {
+                    melody.push(scale[currentIndex]);
+
+                    // Random walk with constraints based on mood
+                    const movement = Math.random();
+                    if (density === 'high') {
+                        // More jumps and energy
+                        if (movement < 0.3) currentIndex += 2; // Big jump up
+                        else if (movement < 0.5) currentIndex += 1; // Step up
+                        else if (movement < 0.7) currentIndex -= 1; // Step down
+                        else currentIndex -= 2; // Jump down
+                    } else if (density === 'medium') {
+                        // Moderate movement
+                        if (movement < 0.35) currentIndex += 1; // Step up
+                        else if (movement < 0.65) currentIndex += 0; // Stay same (repeat)
+                        else currentIndex -= 1; // Step down
+                    } else {
+                        // Slower, more melodic movement - creates flowing lines
+                        if (movement < 0.35) {
+                            currentIndex += direction; // Continue in same direction
+                            stepsSinceChange++;
+                        } else if (movement < 0.55) {
+                            currentIndex += 0; // Stay same (but less often)
+                        } else if (movement < 0.75) {
+                            currentIndex -= direction; // Reverse direction
+                            direction *= -1;
+                            stepsSinceChange = 0;
+                        } else {
+                            // Occasional larger jump to add interest
+                            currentIndex += direction * 2;
+                            stepsSinceChange++;
+                        }
+
+                        // Change direction after too many steps in one direction
+                        if (stepsSinceChange > 3) {
+                            direction *= -1;
+                            stepsSinceChange = 0;
+                        }
+                    }
+
+                    // Keep within scale bounds
+                    currentIndex = Math.max(0, Math.min(scale.length - 1, currentIndex));
+
+                    // If we hit bounds, reverse direction
+                    if (currentIndex === 0 || currentIndex === scale.length - 1) {
+                        direction *= -1;
+                    }
+                }
+                return melody;
+            }
+
+            // Determine note durations based on rhythm density
+            let noteDuration, sequenceInterval, melodyLength;
+            if (params.rhythmDensity === 'high') {
+                noteDuration = '8n';
+                sequenceInterval = '8n';
+                melodyLength = 32; // Longer, more active melody
+            } else if (params.rhythmDensity === 'medium') {
+                noteDuration = '4n';
+                sequenceInterval = '4n';
+                melodyLength = 16; // Moderate length
+            } else {
+                noteDuration = '2n';
+                sequenceInterval = '2n';
+                melodyLength = 8; // Short, spacious melody
+            }
+
+            const melodySequence = generateMelody(params.scale, params.rhythmDensity, melodyLength);
+
+            // Debug: Check synthesizers status
+            console.log('Synthesizers status:', {
+                trumpet: !!synthesizers.trumpet,
+                brass: !!synthesizers.brass,
+                melody: !!synthesizers.melody,
+                electricPiano: !!synthesizers.electricPiano,
+                rhythmDensity: params.rhythmDensity,
+                leadSynth: params.leadSynth
+            });
+
+            // Choose instrument based on user selection or style's leadSynth parameter
+            const userLeadChoice = document.getElementById('leadInstrument').value;
+            const leadInstrumentKey = userLeadChoice !== 'default' ? userLeadChoice : params.leadSynth;
+            const leadInstrument = synthesizers[leadInstrumentKey] || synthesizers.melody;
+
+            if (!leadInstrument) {
+                console.error('leadInstrument is undefined!', {
+                    requestedSynth: params.leadSynth,
+                    synthesizers: Object.keys(synthesizers)
+                });
+                return; // Exit early to prevent error
+            }
+
+            // Create melody part with humanization and occasional grace notes (simulates slides/bends)
+            const melodyEvents = [];
+            melodySequence.forEach((note, i) => {
+                const baseTime = i * Tone.Time(sequenceInterval).toSeconds();
+                const timing = baseTime + (Math.random() * 0.01 - 0.005);
+
+                // 15% chance to add a grace note (slide effect) - less frequent
+                if (Math.random() > 0.85) {
+                    // Quick grace note before main note (simulates slide/bend)
+                    const graceNote = Tone.Frequency(note).transpose(-2); // 2 semitones below
+                    melodyEvents.push([timing - 0.05, { note: graceNote, isGrace: true }]);
+                }
+
+                // Main note - play 90% of time (more notes, less sparse)
+                if (Math.random() > 0.1) {
+                    melodyEvents.push([timing, { note: note, isGrace: false }]);
+                }
+            });
+
+            synthParts.melody = new Tone.Part((time, noteData) => {
+                const velocity = noteData.isGrace ? 0.3 : (0.7 + Math.random() * 0.3); // More consistent velocity
+                const duration = noteData.isGrace ? '32n' : noteDuration;
+                leadInstrument.triggerAttackRelease(noteData.note, duration, time, velocity);
+            }, melodyEvents);
+            synthParts.melody.loop = true;
+            synthParts.melody.loopEnd = melodySequence.length * Tone.Time(sequenceInterval).toSeconds();
+
+            // Choose chord instrument based on user selection or style/mood
+            const userChordChoice = document.getElementById('chordInstrument').value;
+            let chordInstrument;
+            if (userChordChoice !== 'default') {
+                chordInstrument = synthesizers[userChordChoice] || synthesizers.pads;
+            } else {
+                // Use electric piano for chords in upbeat moods, pads for calm moods
+                chordInstrument = params.rhythmDensity !== 'low' ? synthesizers.electricPiano : synthesizers.pads;
+            }
+
+            // Create chord progression
+            synthParts.chords = new Tone.Part((time, chord) => {
+                const velocity = 0.7 + (Math.random() * 0.2);
+                chordInstrument.triggerAttackRelease(chord, '1n', time, velocity);
+            }, params.chords.map((chord, i) => [i * 2, chord]));
+            synthParts.chords.loop = true;
+            synthParts.chords.loopEnd = params.chords.length * 2;
+
+            // Create bassline with leading tones (chromatic approach notes)
+            const bassSequence = [];
+            params.bassNotes.forEach((note, i) => {
+                const beatTime = i * 2;
+                // Main bass note (root tone)
+                bassSequence.push([beatTime, { note: note, type: 'root' }]);
+
+                // Add leading tone before next chord (small tone leading up)
+                if (i < params.bassNotes.length - 1) {
+                    const nextNote = params.bassNotes[i + 1];
+                    const currentFreq = Tone.Frequency(note).toFrequency();
+                    const nextFreq = Tone.Frequency(nextNote).toFrequency();
+
+                    // Add a passing tone between notes
+                    if (Math.random() > 0.5) {
+                        const leadingTone = nextFreq > currentFreq ?
+                            Tone.Frequency(nextNote).transpose(-1) : // Approach from below
+                            Tone.Frequency(nextNote).transpose(1);   // Approach from above
+                        bassSequence.push([beatTime + 1.75, { note: leadingTone, type: 'leading' }]);
+                    }
+                }
+            });
+
+            // Choose bass instrument based on user selection
+            const userBassChoice = document.getElementById('bassInstrument').value;
+            const bassInstrument = userBassChoice !== 'default' ?
+                (synthesizers[userBassChoice] || synthesizers.bass) :
+                synthesizers.bass;
+
+            synthParts.bass = new Tone.Part((time, noteData) => {
+                const timing = time + (Math.random() * 0.02 - 0.01);
+                const velocity = noteData.type === 'root' ? 0.9 : 0.6; // Leading tones softer
+                const duration = noteData.type === 'root' ? '2n' : '16n';
+                bassInstrument.triggerAttackRelease(noteData.note, duration, timing, velocity);
+            }, bassSequence);
+            synthParts.bass.loop = true;
+            synthParts.bass.loopEnd = params.bassNotes.length * 2;
+
+            // Create drum patterns based on style's drum pattern and mood's rhythm density
+            let kickPattern, snarePattern, hihatPattern;
+            const drumStyle = params.drumsPattern || 'fourOnFloor';
+
+            // Setup gif spawning based on rhythm density
+            setupBeatSyncedGifs(params.rhythmDensity);
+
+            if (drumStyle === 'fourOnFloor' || drumStyle === 'electronic') {
+                // Rock/Electronic: Four-on-the-floor kick
+                const kickInterval = params.rhythmDensity === 'high' ? '4n' : params.rhythmDensity === 'medium' ? '4n' : '2n';
+                kickPattern = new Tone.Loop((time) => {
+                    kick.triggerAttackRelease('C1', '8n', time);
+                    // Spawn gif on each kick beat (with built-in probability)
+                    Tone.Draw.schedule(() => {
+                        spawnVibeGif();
+                    }, time);
+                }, kickInterval);
+
+                snarePattern = new Tone.Loop((time) => {
+                    snare.triggerAttackRelease('8n', time);
+                }, '2n'); // Backbeat on 2 and 4
+
+                const hihatInterval = drumStyle === 'electronic' ? '16n' : (params.rhythmDensity === 'high' ? '8n' : '4n');
+                hihatPattern = new Tone.Loop((time) => {
+                    hihat.triggerAttackRelease('32n', time);
+                }, hihatInterval);
+
+            } else if (drumStyle === 'swing') {
+                // Jazz: Swing pattern
+                kickPattern = new Tone.Loop((time) => {
+                    kick.triggerAttackRelease('C1', '8n', time);
+                    // Spawn gif on each kick beat
+                    Tone.Draw.schedule(() => {
+                        spawnVibeGif();
+                    }, time);
+                }, '2n'); // Softer kick
+
+                snarePattern = new Tone.Loop((time) => {
+                    if (Math.random() > 0.3) { // Syncopated snare
+                        snare.triggerAttackRelease('32n', time, 0.3);
+                    }
+                }, '4n');
+
+                hihatPattern = new Tone.Loop((time) => {
+                    const velocity = Math.random() * 0.3 + 0.2; // Variable intensity
+                    hihat.triggerAttackRelease('32n', time, velocity);
+                }, '8t'); // Triplet feel for swing
+
+            } else if (drumStyle === 'minimal') {
+                // Classical: Minimal/no drums
+                kickPattern = new Tone.Loop((time) => {
+                    if (Math.random() > 0.7) { // Very sparse
+                        kick.triggerAttackRelease('C1', '8n', time, 0.2);
+                    }
+                    // Spawn gif occasionally (probability handled by spawnVibeGif)
+                    Tone.Draw.schedule(() => {
+                        spawnVibeGif();
+                    }, time);
+                }, '1m');
+
+                snarePattern = new Tone.Loop((time) => {
+                    // Barely any snare
+                }, '1m');
+
+                hihatPattern = new Tone.Loop((time) => {
+                    if (Math.random() > 0.6) { // Sparse texture
+                        hihat.triggerAttackRelease('32n', time, 0.15);
+                    }
+                }, '2n');
+            } else {
+                // Default: Based on rhythm density
+                const kickInterval = params.rhythmDensity === 'high' ? '4n' : params.rhythmDensity === 'medium' ? '4n' : '2n';
+                kickPattern = new Tone.Loop((time) => {
+                    kick.triggerAttackRelease('C1', '8n', time);
+                    // Spawn gif on each kick beat
+                    Tone.Draw.schedule(() => {
+                        spawnVibeGif();
+                    }, time);
+                }, kickInterval);
+
+                snarePattern = new Tone.Loop((time) => {
+                    snare.triggerAttackRelease('8n', time);
+                }, '2n');
+
+                hihatPattern = new Tone.Loop((time) => {
+                    hihat.triggerAttackRelease('32n', time);
+                }, params.rhythmDensity === 'high' ? '8n' : '4n');
+            }
+
+            // Add shaker pattern for texture (16th notes, sparse)
+            const shakerPattern = new Tone.Loop((time) => {
+                if (Math.random() > 0.4) { // 60% probability for natural feel
+                    shaker.triggerAttackRelease('32n', time);
+                }
+            }, '16n');
+
+            // Start drum patterns
+            kickPattern.start(0);
+            snarePattern.start('4n'); // Snare on beat 2 and 4
+            hihatPattern.start(0);
+            shakerPattern.start(0);
+
+            // Store drum patterns for cleanup
+            synthParts.kickPattern = kickPattern;
+            synthParts.snarePattern = snarePattern;
+            synthParts.hihatPattern = hihatPattern;
+            synthParts.shakerPattern = shakerPattern;
+
+            // Simplified song structure - just start everything and let it loop
+            // This ensures harmony works correctly first
+            console.log('Song structure:', params.structure);
+            console.log('Using chords:', params.chords);
+            console.log('Using scale:', params.scale);
+
+            // Start all parts together for consistent playback
+            synthParts.melody.start(0);
+            synthParts.chords.start(0);
+            synthParts.bass.start(0);
+            kickPattern.start(0);
+            snarePattern.start('4n'); // Snare on beat 2 and 4
+            hihatPattern.start(0);
+            shakerPattern.start(0);
+
+            // Update section display to show it's playing
+            document.getElementById('currentSection').textContent = 'Playing';
+            document.getElementById('sectionDisplay').style.display = 'block';
+        }
+
+        function stopMusic() {
+            // Stop and dispose synthesizer parts
+            for (const partName in synthParts) {
+                if (synthParts[partName]) {
+                    synthParts[partName].stop();
+                    synthParts[partName].dispose();
+                    synthParts[partName] = null;
+                }
+            }
+
+            // Dispose all synthesizers
+            for (const synthName in synthesizers) {
+                if (synthesizers[synthName]) {
+                    synthesizers[synthName].dispose();
+                    synthesizers[synthName] = null;
+                }
+            }
+
+            // Dispose effects
+            if (reverb) {
+                reverb.dispose();
+                reverb = null;
+            }
+            if (filter) {
+                filter.dispose();
+                filter = null;
+            }
+
+            Tone.Transport.stop();
+            Tone.Transport.cancel();
+
+            isPlaying = false;
+            document.getElementById('playbackControls').style.display = 'none';
+            document.getElementById('sectionDisplay').style.display = 'none';
+
+            // Stop the vibe movement and clean up gifs
+            stopVibeMovement();
+
+            showStatus('Music stopped', 'info');
+
+            // Dispose master volume
+            if (masterVolume) {
+                masterVolume.dispose();
+                masterVolume = null;
+            }
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.style.display = 'block';
+            statusDiv.style.backgroundColor = type === 'error' ? '#f8d7da' :
+                                             type === 'success' ? '#d4edda' : '#e9ecef';
+        }
+
+        // Event listeners for mode selection
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                // Remove active class from all mode buttons
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                // Add active class to clicked button
+                this.classList.add('active');
+                selectedMode = this.dataset.mode;
+                console.log('Mode selected:', selectedMode);
+            });
+        });
+
+        // Event listeners for style selection
+        document.querySelectorAll('.style-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                // Remove selected class from all style buttons
+                document.querySelectorAll('.style-btn').forEach(b => b.classList.remove('selected'));
+                // Add selected class to clicked button
+                this.classList.add('selected');
+                selectedStyle = this.dataset.style;
+                checkSelections();
+            });
+        });
+
+        // Event listeners for mood selection
+        document.querySelectorAll('.mood-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                // Remove selected class from all mood buttons
+                document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+                // Add selected class to clicked button
+                this.classList.add('selected');
+                selectedMood = this.dataset.mood;
+                checkSelections();
+            });
+        });
+
+        // Check if both selections are made and enable generate button
+        function checkSelections() {
+            const generateBtn = document.getElementById('generateBtn');
+            if (selectedStyle && selectedMood) {
+                generateBtn.disabled = false;
+                generateBtn.textContent = `Generate ${selectedStyle.charAt(0).toUpperCase() + selectedStyle.slice(1)} ${selectedMood.charAt(0).toUpperCase() + selectedMood.slice(1)} Music`;
+            } else {
+                generateBtn.disabled = true;
+                generateBtn.textContent = 'Generate Music';
+            }
+        }
+
+        // Volume slider event listener
+        const volumeSlider = document.getElementById('volumeSlider');
+        const volumeValue = document.getElementById('volumeValue');
+
+        volumeSlider.addEventListener('input', function() {
+            const volume = this.value;
+            volumeValue.textContent = volume;
+
+            // Update slider gradient
+            const percentage = volume;
+            this.style.background = `linear-gradient(to right, #28a745 0%, #28a745 ${percentage}%, #ddd ${percentage}%, #ddd 100%)`;
+
+            // Update master volume if playing
+            if (masterVolume) {
+                const volumeDb = (parseFloat(volume) / 100) * 10 - 10; // Convert 0-100 to -10dB to 0dB
+                masterVolume.volume.value = volumeDb;
+            }
+        });
+
+        // Event listeners
+        document.getElementById('generateBtn').addEventListener('click', generateMusic);
+        document.getElementById('stopBtn').addEventListener('click', stopMusic);
+    </script>
+</body>
+</html>
